@@ -5,8 +5,14 @@
 //
     
   var Kernel = function(pSystem){
-  
-    var USE_WORKER = (window.Worker !== undefined)
+    // web workers fail when started from pages loaded from disk
+    // See: https://groups.google.com/a/chromium.org/group/chromium-html5/browse_thread/thread/b71c654e8df2e20b
+    //      http://code.google.com/p/chromium/issues/detail?id=40787
+    var chrome_local_file = window.location.protocol == "file:" &&
+      navigator.userAgent.toLowerCase().indexOf('chrome') > -1;
+    if (chrome_local_file) trace('disabling web workers: running in chrome from local file');
+
+    var USE_WORKER = (window.Worker !== undefined && !chrome_local_file)
     // var USE_WORKER = false
     
     var _physics = null
