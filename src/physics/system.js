@@ -389,6 +389,7 @@
       
       // convert to/from screen coordinates
       screen:function(opts){
+        if (opts == undefined) return {size:_screenSize, padding:_screenPadding, step:_screenStep}
         if (opts.size!==undefined) that.screenSize(opts.size.width, opts.size.height)
         if (!isNaN(opts.step)) that.screenStep(opts.step)
         if (opts.padding!==undefined) that.screenPadding(opts.padding)
