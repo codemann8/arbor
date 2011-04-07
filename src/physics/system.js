@@ -568,7 +568,7 @@
           _changes = []
           _notification = null
         }
-      },
+      }
     }    
     
     state.kernel = Kernel(that)
