@@ -574,39 +574,53 @@
     state.kernel = Kernel(that)
     state.tween = state.kernel.tween || null
     
+    // moz/safari/chrome support __define[SG]etter__, IE9 doesn't
+    // safari/chrome/IE9 support Object.defineProperty, moz < 4 doesn't
+    // shim here so that everyone is happy
+    // Note that our fake defineProperty impl only supports `get` and
+    // `set` slots in the property descriptor, not `enumerable` et al.
+    var defineProperty = Object.defineProperty || function (obj, propName, descriptor) {
+    	descriptor.get && obj.__defineGetter__(propName, descriptor.get);
+    	descriptor.set && obj.__defineSetter__(propName, descriptor.set);
+    };
+    
     // some magic attrs to make the Node objects phone-home their physics-relevant changes
-    Node.prototype.__defineGetter__("p", function() { 
-      var self = this
-      var roboPoint = {}
-      roboPoint.__defineGetter__('x', function(){ return self._p.x; })
-      roboPoint.__defineSetter__('x', function(newX){ state.kernel.particleModified(self._id, {x:newX}) })
-      roboPoint.__defineGetter__('y', function(){ return self._p.y; })
-      roboPoint.__defineSetter__('y', function(newY){ state.kernel.particleModified(self._id, {y:newY}) })
-      roboPoint.__proto__ = Point.prototype
-      return roboPoint
-    })
-    Node.prototype.__defineSetter__("p", function(newP) { 
-      this._p.x = newP.x
-      this._p.y = newP.y
-      state.kernel.particleModified(this._id, {x:newP.x, y:newP.y})
-    })
-
-    Node.prototype.__defineGetter__("mass", function() { return this._mass; });
-    Node.prototype.__defineSetter__("mass", function(newM) { 
-      this._mass = newM
-      state.kernel.particleModified(this._id, {m:newM})
-    })
-
-    Node.prototype.__defineSetter__("tempMass", function(newM) { 
+    defineProperty(Node.prototype, "p",
+    		{get:function() { 
+			        var self = this
+			        var roboPoint = new Point();
+			        defineProperty(roboPoint, "x",
+			        		{get:function(){ return self._p.x; },
+			        	     set:function(newX){ state.kernel.particleModified(self._id, {x:newX}) }});
+			        defineProperty(roboPoint, "y",
+			        		{get:function(){ return self._p.y; },
+			        	     set:function(newY){ state.kernel.particleModified(self._id, {y:newY}) }});
+			        return roboPoint
+			     },
+			 set:function(newP) { 
+			        this._p.x = newP.x
+			        this._p.y = newP.y
+			        state.kernel.particleModified(this._id, {x:newP.x, y:newP.y})
+			     }});
+    
+    defineProperty(Node.prototype, "mass",
+    		{get:function() { return this._mass; },
+    	     set:function(newM) { 
+    	            this._mass = newM
+    	            state.kernel.particleModified(this._id, {m:newM})
+    	         }});
+    
+    defineProperty(Node.prototype, "tempMass", {set:function(newM) { 
       state.kernel.particleModified(this._id, {_m:newM})
-    })
-      
-    Node.prototype.__defineGetter__("fixed", function() { return this._fixed; });
-    Node.prototype.__defineSetter__("fixed", function(isFixed) { 
-      this._fixed = isFixed
-      state.kernel.particleModified(this._id, {f:isFixed?1:0})
-    })
+    }});
+    
+    defineProperty(Node.prototype, "fixed",
+    		{get:function() { return this._fixed; },
+	    	 set:function(isFixed) { 
+	    	       this._fixed = isFixed
+	    	       state.kernel.particleModified(this._id, {f:isFixed?1:0})
+	    	     }});
     
     return that
-  }
+};
   
