@@ -70,7 +70,7 @@
 
 
       start:function(){
-        state.kernel.start()
+        state.kernel.start(true) // assume explicit sys.start() call is unpausing
       },
       stop:function(){
         state.kernel.stop()
