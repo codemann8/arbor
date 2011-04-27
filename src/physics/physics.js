@@ -50,14 +50,18 @@
       addNode:function(c){
         var id = c.id
         var mass = c.m
+        var p = null;
 
-        var w = _bounds.bottomright.x - _bounds.topleft.x
-        var h = _bounds.bottomright.y - _bounds.topleft.y
-        var randomish_pt = new Point(_bounds.topleft.x + w*Math.random(),
-                                     _bounds.topleft.y + h*Math.random())
-
+        if ('p' in c && c.p.x && c.p.y) {
+          p = new Point(c.p);
+        } else {
+          var w = _bounds.bottomright.x - _bounds.topleft.x
+          var h = _bounds.bottomright.y - _bounds.topleft.y
+          p = new Point(_bounds.topleft.x + w*Math.random(),
+                        _bounds.topleft.y + h*Math.random())
+        }
         
-        active.particles[id] = new Particle(randomish_pt, mass);
+        active.particles[id] = new Particle(p, mass);
         active.particles[id].connections = 0
         free.particles[id] = active.particles[id]
         particles.push(active.particles[id])        
