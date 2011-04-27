@@ -204,10 +204,6 @@
       
       applyBarnesHutRepulsion:function(){
         if (!_bounds.topleft || !_bounds.bottomright) return
-        // cannot sanely build a tree when the extent of bounds is a single point
-        // (occurs when graph contains one node; don't yet have bounds recalculated for
-        //  points 2-n that have just been added)
-        if (_bounds.topleft.equals(_bounds.bottomright)) return
         var bottomright = new Point(_bounds.bottomright)
         var topleft = new Point(_bounds.topleft)
 
