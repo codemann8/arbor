@@ -91,7 +91,6 @@
             _tickInterval=null
           }
         }
-
         // a change to the physics parameters 
         if (USE_WORKER) _physics.postMessage({type:'sys',param:param})
         else _physics.modifyPhysics(param)
@@ -102,6 +101,12 @@
         switch (e.data.type) {
           case 'geometry':
             that.workerUpdate(e.data)
+            // function doesn't get through .postMessage, so we need to check terminationFn
+            // when in worker mode here
+            if (pSystem.parameters().terminationFn()) {
+              trace("stopping worker")
+              _physics.postMessage({type:"stop"})
+            }
             break
           case 'stopping':
             _running = false
@@ -181,21 +186,10 @@
         _fpsWindow.push(_fpsWindow.last-prevFrame)
         if (_fpsWindow.length>50) _fpsWindow.shift()
 
-        // but stop the simulation when energy of the system goes below a threshold
-        var sysEnergy = _physics.systemEnergy()
-        if ((sysEnergy.mean + sysEnergy.max)/2 < 0.05){
-          if (_lastTick===null) _lastTick=new Date().valueOf()
-          if (new Date().valueOf()-_lastTick>1000){
-            // trace('stopping')
-            clearInterval(_tickInterval)
-            _tickInterval = null
-            _running = false;
-          }else{
-            // trace('pausing')
-          }
-        }else{
-          // trace('continuing')
-          _lastTick = null
+        if (pSystem.parameters().terminationFn()) {
+          clearInterval(_tickInterval)
+          _tickInterval = null
+          _running = false;
         }
       },
 

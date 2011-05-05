@@ -36,8 +36,27 @@
     precision = isNaN(precision) ? .6 : precision
     centerGravity = (centerGravity===true)
     var _systemTimeout = (targetFps!==undefined) ? 1000/targetFps : 1000/50
-    var _parameters = {repulsion:repulsion, stiffness:stiffness, friction:friction, dt:dt, gravity:centerGravity, precision:precision, timeout:_systemTimeout}
     var _energy
+
+    var _lastTick
+    var defaultTerminationFn = function () {
+        if (_energy && (_energy.mean + _energy.max)/2 < 0.05){
+          if (_lastTick===null) _lastTick=new Date().valueOf()
+          return new Date().valueOf()-_lastTick>1000
+        }else{
+          _lastTick = null
+        }
+      }
+
+    var _parameters = {repulsion:repulsion,
+                       stiffness:stiffness,
+                       friction:friction,
+                       dt:dt,
+                       gravity:centerGravity,
+                       precision:precision,
+                       timeout:_systemTimeout,
+                       terminationFn:defaultTerminationFn
+                     }
 
     var state = {
       renderer:null, // this is set by the library user
@@ -67,7 +86,7 @@
         if (newFPS===undefined) return state.kernel.fps()
         else that.parameters({timeout:1000/(newFPS||50)})
       },
-
+      defaultTerminationFn:defaultTerminationFn,
 
       start:function(){
         state.kernel.start(true) // assume explicit sys.start() call is unpausing
