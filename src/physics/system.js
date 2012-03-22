@@ -17,6 +17,7 @@
     var _bounds = null
     var _boundsTarget = null
     var _center = null
+    var _camera = "zoom"
 
     if (typeof repulsion=='object'){
       var _p = repulsion
@@ -452,6 +453,9 @@
       center:function(newCenter) {
         _center = newCenter
       },
+      camera:function(newCamera) {
+        _camera = newCamera
+      },
 
       _setView:function(center,w,h,bbox){
         var p = null
@@ -482,15 +486,23 @@
         else {
             trace('Error! Bad argument to _setView()')
         }
-        if (!w) w = 2*Math.max(Math.max(2,p.x-bbox.topleft.x),bbox.bottomright.x-p.x)
-        if (!h) h = 2*Math.max(Math.max(2,p.y-bbox.topleft.y),bbox.bottomright.y-p.y)
 
-        // Option 1: Proportional scaling to fit all nodes
-        var x = Math.max(w,h)
-        var size = new Point(x,x)
-		// Option 2: Fit to box scaling to fit all nodes
-        // var size = new Point(w,h)
-		// TODO: Option 3: Same as last size
+        var size;
+        if (!w) {
+            if (_bounds && _camera == "pan") w = _bounds.bottomright.x - _bounds.topleft.x
+            else w = 2*Math.max(Math.max(2,p.x-bbox.topleft.x),bbox.bottomright.x-p.x)
+        }
+        if (!h) {
+            if (_bounds && _camera == "pan") h = _bounds.bottomright.y - _bounds.topleft.y
+            else h = 2*Math.max(Math.max(2,p.y-bbox.topleft.y),bbox.bottomright.y-p.y)
+        }
+        if (_camera == "zoom") {
+            var x = Math.max(w,h)
+            size = new Point(x,x)
+        }
+        else { // Pan or fit
+            size = new Point(w,h)
+        }
 
         _boundsTarget = {topleft:p.subtract(size.divide(2)),bottomright:p.add(size.divide(2))}
       },
