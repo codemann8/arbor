@@ -59,8 +59,8 @@
             // both points in the queue now
             var branch_size = node.size.divide(2)
             var branch_origin = new Point(node.origin)
-            if (p_quad[0]=='s') branch_origin.y += branch_size.y
-            if (p_quad[1]=='e') branch_origin.x += branch_size.x
+            if (p_quad && p_quad[0]=='s') branch_origin.y += branch_size.y
+            if (p_quad && p_quad[1]=='e') branch_origin.x += branch_size.x
 
             // replace the previously particle-occupied quad with a new internal branch node
             var oldParticle = node[p_quad]
