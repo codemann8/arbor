@@ -4,8 +4,8 @@
 // the main controller object for creating/modifying graphs 
 //
 
-  var ParticleSystem = function(repulsion, stiffness, friction, centerGravity, targetFps, dt, precision){
-  // also callable with ({stiffness:, repulsion:, friction:, timestep:, fps:, dt:, gravity:})
+  var ParticleSystem = function(repulsion, stiffness, friction, centerGravity, speed, targetFps, dt, precision){
+  // also callable with ({stiffness:, repulsion:, friction:, timestep:, speed:, fps:, dt:, gravity:})
     
     var _changes=[]
     var _notification=null
@@ -17,11 +17,12 @@
     var _bounds = null
     var _boundsTarget = null
 
-    if (typeof stiffness=='object'){
-      var _p = stiffness
+    if (typeof repulsion=='object'){
+      var _p = repulsion
       friction = _p.friction
       repulsion = _p.repulsion
       targetFps = _p.fps
+      speed = _p.speed
       dt = _p.dt
       stiffness = _p.stiffness
       centerGravity = _p.gravity
@@ -31,12 +32,13 @@
     friction = isNaN(friction) ? .5 : friction
     repulsion = isNaN(repulsion) ? 1000 : repulsion
     targetFps = isNaN(targetFps) ? 55 : targetFps
+    speed = isNaN(speed) ? 1 : speed
     stiffness = isNaN(stiffness) ? 600 : stiffness
     dt = isNaN(dt) ? 0.02 : dt
     precision = isNaN(precision) ? .6 : precision
     centerGravity = (centerGravity===true)
     var _systemTimeout = (targetFps!==undefined) ? 1000/targetFps : 1000/50
-    var _parameters = {repulsion:repulsion, stiffness:stiffness, friction:friction, dt:dt, gravity:centerGravity, precision:precision, timeout:_systemTimeout}
+    var _parameters = {repulsion:repulsion, stiffness:stiffness, friction:friction, dt:dt, gravity:centerGravity, precision:precision, speed:speed, timeout:_systemTimeout}
     var _energy
 
     var state = {
@@ -89,8 +91,8 @@
           //   'fixed' overrides the default of false
           //   'x' & 'y' will set a starting position rather than 
           //             defaulting to random placement
-          var x = (data.x!=undefined) ? data.x : null
-          var y = (data.y!=undefined) ? data.y : null
+          var x = (data.x!=undefined && !isNaN(data.x)) ? data.x : null
+          var y = (data.y!=undefined && !isNaN(data.y)) ? data.y : null
           var fixed = (data.fixed) ? 1 : 0
 
           var node = new Node(data)
