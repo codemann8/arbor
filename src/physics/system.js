@@ -448,31 +448,54 @@
         return arbor.Point(px, py);
       },
 
+      _setView:function(center,w,h,bbox){
+        var p = null
+        if (!center) {
+            if (!bbox) bbox = that.bounds()
+            var bottomright = new Point(bbox.bottomright.x, bbox.bottomright.y)
+            var topleft = new Point(bbox.topleft.x, bbox.topleft.y)
+            var dims = bottomright.subtract(topleft)
+            w = dims.x
+            h = dims.y
+            p = topleft.add(dims.divide(2))
+        }
+        else if (typeof(center)=='object') {
+            // if center is a Point
+            if (center.x != undefined && center.y != undefined) {
+                p = new Point(center.x, center.y)
+            }
+            // if center is a Node
+            if (typeof(center.p)=='object') {
+                p = new Point(center.p.x, center.p.y)
+            }
+        }
+        // if center is a Node identifier
+        else if (typeof(center)=='string') {
+            n = that.getNode(center)
+            p = new Point(n.p.x, n.p.y)
+        }
+        else {
+            trace('Error! Bad argument to _setView()')
+        }
+        // Same size view default
+        /*if (_bounds) {
+            if (w==undefined) w = _bounds.w 
+            if (h==undefined) h = _bounds.h
+        }*/
+        var size = new Point(w,h)
+        _boundsTarget = {topleft:p.subtract(size.divide(2)),bottomright:p.add(size.divide(2))}
+      },
+
       _updateBounds:function(newBounds){
         // step the renderer's current bounding box closer to the true box containing all
         // the nodes. if _screenStep is set to 1 there will be no lag. if _screenStep is
         // set to 0 the bounding box will remain stationary after being initially set 
         if (_screenSize===null) return
         
-        if (newBounds) _boundsTarget = newBounds
-        else _boundsTarget = that.bounds()
-        
-        // _boundsTarget = newBounds || that.bounds()
-        // _boundsTarget.topleft = new Point(_boundsTarget.topleft.x,_boundsTarget.topleft.y)
-        // _boundsTarget.bottomright = new Point(_boundsTarget.bottomright.x,_boundsTarget.bottomright.y)
-
-        var bottomright = new Point(_boundsTarget.bottomright.x, _boundsTarget.bottomright.y)
-        var topleft = new Point(_boundsTarget.topleft.x, _boundsTarget.topleft.y)
-        var dims = bottomright.subtract(topleft)
-        var center = topleft.add(dims.divide(2))
-
-
-        var MINSIZE = 4                                   // perfect-fit scaling
-        // MINSIZE = Math.max(Math.max(MINSIZE,dims.y), dims.x) // proportional scaling
-
-        var size = new Point(Math.max(dims.x,MINSIZE), Math.max(dims.y,MINSIZE))
-        _boundsTarget.topleft = center.subtract(size.divide(2))
-        _boundsTarget.bottomright = center.add(size.divide(2))
+        if (newBounds) {
+            that._setView(0,0,0,newBounds)
+        }
+        else that._setView()
 
         if (!_bounds){
           if ($.isEmptyObject(state.nodes)) return false
