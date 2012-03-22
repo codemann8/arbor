@@ -16,6 +16,7 @@
     var _screenPadding = [20,20,20,20]
     var _bounds = null
     var _boundsTarget = null
+    var _center = null
 
     if (typeof repulsion=='object'){
       var _p = repulsion
@@ -448,10 +449,14 @@
         return arbor.Point(px, py);
       },
 
+      center:function(newCenter) {
+        _center = newCenter
+      },
+
       _setView:function(center,w,h,bbox){
         var p = null
+        if (!bbox) bbox = that.bounds()
         if (!center) {
-            if (!bbox) bbox = that.bounds()
             var bottomright = new Point(bbox.bottomright.x, bbox.bottomright.y)
             var topleft = new Point(bbox.topleft.x, bbox.topleft.y)
             var dims = bottomright.subtract(topleft)
@@ -477,25 +482,29 @@
         else {
             trace('Error! Bad argument to _setView()')
         }
-        // Same size view default
-        /*if (_bounds) {
-            if (w==undefined) w = _bounds.w 
-            if (h==undefined) h = _bounds.h
-        }*/
-        var size = new Point(w,h)
+        if (!w) w = 2*Math.max(Math.max(2,p.x-bbox.topleft.x),bbox.bottomright.x-p.x)
+        if (!h) h = 2*Math.max(Math.max(2,p.y-bbox.topleft.y),bbox.bottomright.y-p.y)
+
+        // Option 1: Proportional scaling to fit all nodes
+        var x = Math.max(w,h)
+        var size = new Point(x,x)
+		// Option 2: Fit to box scaling to fit all nodes
+        // var size = new Point(w,h)
+		// TODO: Option 3: Same as last size
+
         _boundsTarget = {topleft:p.subtract(size.divide(2)),bottomright:p.add(size.divide(2))}
       },
 
       _updateBounds:function(newBounds){
-        // step the renderer's current bounding box closer to the true box containing all
-        // the nodes. if _screenStep is set to 1 there will be no lag. if _screenStep is
+        // step the renderer's current bounding box closer to the desired view
+        // if _screenStep is set to 1 there will be no lag. if _screenStep is
         // set to 0 the bounding box will remain stationary after being initially set 
         if (_screenSize===null) return
         
         if (newBounds) {
-            that._setView(0,0,0,newBounds)
+            that._setView(_center,0,0,newBounds)
         }
-        else that._setView()
+        else that._setView(_center)
 
         if (!_bounds){
           if ($.isEmptyObject(state.nodes)) return false
