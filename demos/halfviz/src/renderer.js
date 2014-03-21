@@ -37,7 +37,11 @@
     	};
 
     var that = {
+        
+  	  fixed:false,
+      
       init:function(system){
+        
         particleSystem = system
         particleSystem.screenSize(canvas.width, canvas.height) 
         particleSystem.screenPadding(40)
@@ -225,7 +229,7 @@
 
           dropped:function(e){
             if (dragged===null || dragged.node===undefined) return
-            if (dragged.node !== null) dragged.node.fixed = false
+            if (dragged.node !== null) dragged.node.fixed = that.fixed
             //dragged.node.tempMass = 1000
             dragged.node.tempMass = 50
             dragged = null

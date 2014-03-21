@@ -14,7 +14,7 @@
         dom.find('.ctrl > a').live('click', that.menuClick)
         _dialog.find('li>a').live('click', that.exampleClick)
         
-        $.getJSON("library/toc.json", function(resp){
+        $.getJSON(arbor_path()+"../demos/halfviz/library/toc.json", function(resp){
           _dialog.append($("<h1>Choose Your Own Adventure</h1>"))
           $.each(resp.rows, function(i, row){
             if (row.key[0]!='cyoa') return

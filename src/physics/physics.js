@@ -17,7 +17,9 @@
     var SPEED_LIMIT = 1000 // the max particle velocity per tick
     
     var that = {
-      integrator:['verlet','euler'].indexOf(integrator)>=0 ? integrator : 'verlet',
+//      integrator:['verlet','euler'].indexOf(integrator)>=0 ? integrator : 'verlet',
+// I would not default to this verlet algorithm. It doesn't seem to handle "fixed" very well at all
+      integrator:['verlet','euler'].indexOf(integrator)>=0 ? integrator : 'euler',
       stiffness:(stiffness!==undefined) ? stiffness : 1000,
       repulsion:(repulsion!==undefined)? repulsion : 600,
       friction:(friction!==undefined)? friction : .3,

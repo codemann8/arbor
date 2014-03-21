@@ -47,7 +47,7 @@
       },
       
       getDoc:function(e){
-        $.getJSON('library/'+e.id+'.json', function(doc){
+        $.getJSON(arbor_path()+'../demos/halfviz/library/'+e.id+'.json', function(doc){
 
           // update the system parameters
           if (doc.sys){
@@ -83,6 +83,7 @@
            otherwise it bounces around the screen like crazy */
           fixed = true;
         }
+        sys.renderer.fixed = fixed;
         $.each(network.nodes, function(nname, ndata){
           if (ndata.label===undefined) ndata.label = nname
           ndata.fixed = fixed;
