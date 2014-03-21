@@ -54,7 +54,7 @@
             
             node = node[p_quad]
             queue.unshift(particle)
-          }else{
+          }else if (node.size.x > 0 || node.size.y > 0){
             // slot contains a particle, create a new branch and recurse with
             // both points in the queue now
             var branch_size = node.size.divide(2)
@@ -74,9 +74,9 @@
             if (oldParticle.p.x===particle.p.x && oldParticle.p.y===particle.p.y){
               // prevent infinite bisection in the case where two particles
               // have identical coordinates by jostling one of them slightly
-              var x_spread = branch_size.x*.08
-              var y_spread = branch_size.y*.08
-              oldParticle.p.x = Math.min(branch_origin.x+branch_size.x,  
+                 var x_spread = branch_size.x*.08
+                 var y_spread = branch_size.y*.08
+                 oldParticle.p.x = Math.min(branch_origin.x+branch_size.x,  
                                          Math.max(branch_origin.x,  
                                                   oldParticle.p.x - x_spread/2 + 
                                                   Math.random()*x_spread))

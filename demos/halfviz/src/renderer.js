@@ -5,6 +5,36 @@
     var ctx = canvas.getContext("2d");
     var gfx = arbor.Graphics(canvas)
     var particleSystem = null
+    
+    var getTextHeight = function(font) {
+
+    	  var text = $('<span>Hg</span>').css({ font: font });
+    	  var block = $('<div style="display: inline-block; width: 1px; height: 0px;"></div>');
+
+    	  var div = $('<div></div>');
+    	  div.append(text, block);
+
+    	  var body = $('body');
+    	  body.append(div);
+
+    	  try {
+
+    	    var result = {};
+
+    	    block.css({ verticalAlign: 'baseline' });
+    	    result.ascent = block.offset().top - text.offset().top;
+
+    	    block.css({ verticalAlign: 'bottom' });
+    	    result.height = block.offset().top - text.offset().top;
+
+    	    result.descent = result.height - result.ascent;
+
+    	  } finally {
+    	    div.remove();
+    	  }
+
+    	  return result;
+    	};
 
     var that = {
       init:function(system){
@@ -28,8 +58,15 @@
 
           // determine the box size and round off the coords if we'll be 
           // drawing a text label (awful alignment jitter otherwise...)
+          var font;
+          if (node.data.font) {
+        	font = node.data.font
+          } else {
+        	font = "12px Helvetica"
+          }
+          ctx.font = font
+            
           var label = node.data.label||""
-          var w = ctx.measureText(""+label).width + 10
           if (!(""+label).match(/^[ \t]*$/)){
             pt.x = Math.floor(pt.x)
             pt.y = Math.floor(pt.y)
@@ -37,27 +74,60 @@
             label = null
           }
 
+          var horizMargin = 5;
+          var vertMargin = 2;
+          
+          var labelLines = label+"";
+          if (label) {
+        	labelLines = label.split("\\n");
+          }
+          var lineHeight = getTextHeight(font);
+          var totalHeight = (lineHeight.height*labelLines.length)+vertMargin;
+          
           // draw a rectangle centered at pt
           if (node.data.color) ctx.fillStyle = node.data.color
           else ctx.fillStyle = "rgba(0,0,0,.2)"
           if (node.data.color=='none') ctx.fillStyle = "white"
 
-          if (node.data.shape=='dot'){
-            gfx.oval(pt.x-w/2, pt.y-w/2, w,w, {fill:ctx.fillStyle})
-            nodeBoxes[node.name] = [pt.x-w/2, pt.y-w/2, w,w]
-          }else{
-            gfx.rect(pt.x-w/2, pt.y-10, w,20, 4, {fill:ctx.fillStyle})
-            nodeBoxes[node.name] = [pt.x-w/2, pt.y-11, w, 22]
+          var w = 0;
+          for (var i = 0; i < labelLines.length; i++) {
+            w = Math.max(w,ctx.measureText(""+labelLines[i]).width + (horizMargin*2));
           }
+          var h = totalHeight;
+          if (node.data.shape=='dot'){
+            w = Math.max(w,h);
+            h = Math.max(w,h);
+          }
+          var x = pt.x-w/2;
+          var y = pt.y-h/2;
+          
+          if (node.data.shape=='dot'){
+            gfx.oval(x, y, w, h, {fill:ctx.fillStyle})
+          }else{
+            gfx.rect(x, y, w, h, 4, {fill:ctx.fillStyle})
+          }
+          nodeBoxes[node.name] = [x,y,w,h]
 
           // draw the text
           if (label){
-            ctx.font = "12px Helvetica"
-            ctx.textAlign = "center"
-            ctx.fillStyle = "white"
-            if (node.data.color=='none') ctx.fillStyle = '#333333'
-            ctx.fillText(label||"", pt.x, pt.y+4)
-            ctx.fillText(label||"", pt.x, pt.y+4)
+            var align = "center";
+            x = pt.x;
+            y = pt.y-(totalHeight/2)+lineHeight.ascent;
+            if (node.data.align!==undefined) {
+          	  align = node.data.align;
+              if (align == "left") {
+            	x -= (w/2-horizMargin);
+              } else if (align == "right") {
+            	x += (w/2-horizMargin);
+              }
+            }
+            ctx.textAlign = align;
+            ctx.fillStyle = "white";
+            if (node.data.color=='none') ctx.fillStyle = '#333333';
+            for (var i = 0; i < labelLines.length; i++) {
+              ctx.fillText(labelLines[i]||"", x, y+(i*lineHeight.height))
+              ctx.fillText(labelLines[i]||"", x, y+(i*lineHeight.height))
+            }
           }
         })    			
 
@@ -156,6 +226,7 @@
           dropped:function(e){
             if (dragged===null || dragged.node===undefined) return
             if (dragged.node !== null) dragged.node.fixed = false
+            //dragged.node.tempMass = 1000
             dragged.node.tempMass = 50
             dragged = null
             selected = null

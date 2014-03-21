@@ -4,6 +4,7 @@
 // instantiates all the helper classes, sets up the particle system + renderer
 // and maintains the canvas/editor splitview
 //
+
 (function(){
   
   trace = arbor.etc.trace
@@ -76,8 +77,15 @@
       updateGraph:function(e){
         var src_txt = _code.val()
         var network = parse(src_txt)
+        var fixed = false;
+        if (Object.keys(network.nodes).length < 2) {
+        /* Resolve a bug when there is only one node,
+           otherwise it bounces around the screen like crazy */
+          fixed = true;
+        }
         $.each(network.nodes, function(nname, ndata){
           if (ndata.label===undefined) ndata.label = nname
+          ndata.fixed = fixed;
         })
         sys.merge(network)
         _updateTimeout = null
@@ -148,7 +156,9 @@
 
 
   $(document).ready(function(){
-    var mcp = HalfViz("#halfviz")    
+    var mcp = HalfViz("#halfviz");
+    document.halfviz = mcp; 
+      /* this helps GWT apps embedded in iframes find the halfviz object */
   })
 
   
