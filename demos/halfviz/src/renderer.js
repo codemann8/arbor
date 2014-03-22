@@ -5,37 +5,206 @@
     var ctx = canvas.getContext("2d");
     var gfx = arbor.Graphics(canvas)
     var particleSystem = null
+    var horizMargin = 5
+    var vertMargin = 2
+          
     
     var getTextHeight = function(font) {
 
-    	  var text = $('<span>Hg</span>').css({ font: font });
-    	  var block = $('<div style="display: inline-block; width: 1px; height: 0px;"></div>');
+  	  var text = $('<span>Hg</span>').css({ font: font });
+  	  var block = $('<div style="display: inline-block; width: 1px; height: 0px;"></div>');
+  
+  	  var div = $('<div></div>');
+  	  div.append(text, block);
+  
+  	  var body = $('body');
+  	  body.append(div);
+  
+  	  try {
+  
+  	    var result = {};
+  
+  	    block.css({ verticalAlign: 'baseline' });
+  	    result.ascent = block.offset().top - text.offset().top;
+  
+  	    block.css({ verticalAlign: 'bottom' });
+  	    result.height = block.offset().top - text.offset().top;
+  
+  	    result.descent = result.height - result.ascent;
+  
+  	  } finally {
+  	    div.remove();
+  	  }
+  
+  	  return result;
+  	};
+    
+    var drawBox = function(pt, w, h, node) {
+          
+      // draw a rectangle centered at pt
+      if (node.data.color) ctx.fillStyle = node.data.color
+      else ctx.fillStyle = "rgba(0,0,0,.2)"
+      if (node.data.color=='none') ctx.fillStyle = "white"
+      if (node.data.shape=='dot'){
+        w = Math.max(w,h)
+        h = Math.max(w,h)
+      }
+      
+      var x = pt.x-w/2
+      var y = pt.y-h/2
+      
+      if (x<0) {
+      	pt.x-=x
+      	x=0
+      } else if ((x+w) > canvas.width && w < canvas.width) {
+      	var diff=(x+w)-canvas.width
+      	pt.x-=diff
+        x-=diff
+      }
+          
+      if (y<0) {
+      	pt.y-=y
+      	y=0
+      } else if ((y+h) > canvas.height && h < canvas.height) {
+      	var diff=(y+h)-canvas.height
+      	pt.y-=diff
+        y-=diff
+      }
+      
+          
+      if (node.data.shape=='dot'){
+        gfx.oval(x, y, w, h, {fill:ctx.fillStyle})
+      }else{
+        gfx.rect(x, y, w, h, 4, {fill:ctx.fillStyle})
+      }
+      var nodeBox = [x,y,w,h]
+      return nodeBox
+    };
+    
+    var drawText = function(node, pt, font) {
+      // node: {mass:#, p:{x,y}, name:"", data:{}}
+      // pt:   {x:#, y:#}  node position in screen coords
 
-    	  var div = $('<div></div>');
-    	  div.append(text, block);
+      //returns nodeBox
+      
+      node.data.box = null
+      node.data.img = null
+        
+      ctx.font = font
+            
+      var label = node.data.label||""
+      if (!(""+label).match(/^[ \t]*$/)){
+        pt.x = Math.floor(pt.x)
+        pt.y = Math.floor(pt.y)
+      }else{
+        label = null
+      }
 
-    	  var body = $('body');
-    	  body.append(div);
+      var labelLines = label+""
+      if (label) {
+      	labelLines = label.split("\\n")
+      }
+      var lineHeight = getTextHeight(font)
+      var totalHeight = (lineHeight.height*labelLines.length)+vertMargin
 
-    	  try {
+      var w = 0
+      for (var i = 0; i < labelLines.length; i++) {
+        w = Math.max(w,ctx.measureText(""+labelLines[i]).width + (horizMargin*2))
+      }
+      var h = totalHeight
+      var nodeBox = drawBox(pt, w, h, node)
 
-    	    var result = {};
+      // draw the text
+      if (label){
+        var align = "center"
+        x = pt.x
+        y = pt.y-(totalHeight/2)+lineHeight.ascent
+        if (node.data.align!==undefined) {
+      	  align = node.data.align
+          if (align == "left") {
+        	x -= (w/2-horizMargin)
+          } else if (align == "right") {
+        	x += (w/2-horizMargin)
+          }
+        }
+        ctx.textAlign = align
+        ctx.fillStyle = "white"
+        if (node.data.color=='none') ctx.fillStyle = '#333333'
+        for (var i = 0; i < labelLines.length; i++) {
+          ctx.fillText(labelLines[i]||"", x, y+(i*lineHeight.height))
+          ctx.fillText(labelLines[i]||"", x, y+(i*lineHeight.height))
+        }
+      }
+      
+      return nodeBox
+    };
 
-    	    block.css({ verticalAlign: 'baseline' });
-    	    result.ascent = block.offset().top - text.offset().top;
-
-    	    block.css({ verticalAlign: 'bottom' });
-    	    result.height = block.offset().top - text.offset().top;
-
-    	    result.descent = result.height - result.ascent;
-
-    	  } finally {
-    	    div.remove();
-    	  }
-
-    	  return result;
-    	};
-
+    var drawHtml = function(node, pt, defaultFont) {
+      // node: {mass:#, p:{x,y}, name:"", data:{}}
+      // pt:   {x:#, y:#}  node position in screen coords
+      
+  	//returns nodeBox
+      
+    	var html = node.data.html
+    	if (html=="test") {
+        html = "<div><span style='background-color:red'>Yo " +
+        		"<span style='text-decoration:underline;font-style:oblique'>dude!</span></span></div>" +
+        		"<div>Title Here</div>" +
+        		"<table style='width:100px'>" +
+        		"<tr><td>ul</td><td style='text-align:right'>ur</td></tr>" +
+        		"<tr><td>ll</td><td style='text-align:right'>lr</td></tr>" +
+        		"</table>";
+    	}
+        
+      var id ="renderToSVGDiv"
+      var div =
+        "<div id='"+id+"' xmlns='http://www.w3.org/1999/xhtml' style='font:"+defaultFont+"'>" +
+          html+
+        "</div>";
+      
+      if (node.data.box) {
+        node.data.box = drawBox(pt, node.data.box[2], node.data.box[3], node)
+      } else {
+//        window.document.getElementById('hiddenSVGDiv').innerHTML = "<div style='position:absolute;left:-999em;'>"+div+"</div>"
+        window.document.getElementById('halfvizSVGDiv').innerHTML = div
+        var element = canvas.ownerDocument.getElementById(id);
+        node.data.box = drawBox(pt, element.clientWidth+(horizMargin*2), element.clientHeight+(vertMargin*2), node)
+      }
+      if (node.data.img) {
+        if (node.data.imgIsLoaded) {
+    	    ctx.drawImage(node.data.img, node.data.box[0]+horizMargin, node.data.box[1]+vertMargin)
+        }
+      } else {
+        var DOMURL = self.URL || self.webkitURL || self;
+      	var img = new Image();
+        var svgText = 
+          "<svg xmlns='http://www.w3.org/2000/svg' width='"+node.data.box[2]+"' height='"+node.data.box[3]+"'>" +
+          "<foreignObject width='100%' height='100%'>" +
+            "<div id='"+id+"' xmlns='http://www.w3.org/1999/xhtml' style='font:"+defaultFont+
+                ";width="+node.data.box[2]+"px;height="+node.data.box[3]+"px'>" +
+              html+
+            "</div>"+
+          "</foreignObject>" +
+          "</svg>";
+        var svg = new Blob([svgText], {type: "image/svg+xml;charset=utf-8"});
+        var url = DOMURL.createObjectURL(svg);
+        img.width = node.data.box[2]
+        img.height = node.data.box[3]
+      	img.onload = function() {
+          node.data.box = drawBox(pt, node.data.box[2], node.data.box[3], node)
+          node.data.img = img
+          node.data.imgIsLoaded = true
+    	    ctx.drawImage(img, node.data.box[0]+horizMargin, node.data.box[1]+vertMargin)
+          DOMURL.revokeObjectURL(url);
+      	};
+        node.data.imgIsLoaded = false
+        //img.src = "data:image/svg+xml,"+svgText
+        img.src = url;
+      }
+  
+      return node.data.box
+    }
+    
     var that = {
         
   	  fixed:false,
@@ -59,82 +228,22 @@
         particleSystem.eachNode(function(node, pt){
           // node: {mass:#, p:{x,y}, name:"", data:{}}
           // pt:   {x:#, y:#}  node position in screen coords
-
+              
           // determine the box size and round off the coords if we'll be 
           // drawing a text label (awful alignment jitter otherwise...)
-          var font;
+          var font
           if (node.data.font) {
         	font = node.data.font
           } else {
         	font = "12px Helvetica"
           }
-          ctx.font = font
-            
-          var label = node.data.label||""
-          if (!(""+label).match(/^[ \t]*$/)){
-            pt.x = Math.floor(pt.x)
-            pt.y = Math.floor(pt.y)
-          }else{
-            label = null
-          }
-
-          var horizMargin = 5;
-          var vertMargin = 2;
           
-          var labelLines = label+"";
-          if (label) {
-        	labelLines = label.split("\\n");
+          if (node.data.html) {
+            nodeBoxes[node.name] = drawHtml(node, pt, font)
+          } else {
+            nodeBoxes[node.name] = drawText(node, pt, font)
           }
-          var lineHeight = getTextHeight(font);
-          var totalHeight = (lineHeight.height*labelLines.length)+vertMargin;
-          
-          // draw a rectangle centered at pt
-          if (node.data.color) ctx.fillStyle = node.data.color
-          else ctx.fillStyle = "rgba(0,0,0,.2)"
-          if (node.data.color=='none') ctx.fillStyle = "white"
-
-          var w = 0;
-          for (var i = 0; i < labelLines.length; i++) {
-            w = Math.max(w,ctx.measureText(""+labelLines[i]).width + (horizMargin*2));
-          }
-          var h = totalHeight;
-          if (node.data.shape=='dot'){
-            w = Math.max(w,h);
-            h = Math.max(w,h);
-          }
-          var x = pt.x-w/2;
-          var y = pt.y-h/2;
-          
-          if (node.data.shape=='dot'){
-            gfx.oval(x, y, w, h, {fill:ctx.fillStyle})
-          }else{
-            gfx.rect(x, y, w, h, 4, {fill:ctx.fillStyle})
-          }
-          nodeBoxes[node.name] = [x,y,w,h]
-
-          // draw the text
-          if (label){
-            var align = "center";
-            x = pt.x;
-            y = pt.y-(totalHeight/2)+lineHeight.ascent;
-            if (node.data.align!==undefined) {
-          	  align = node.data.align;
-              if (align == "left") {
-            	x -= (w/2-horizMargin);
-              } else if (align == "right") {
-            	x += (w/2-horizMargin);
-              }
-            }
-            ctx.textAlign = align;
-            ctx.fillStyle = "white";
-            if (node.data.color=='none') ctx.fillStyle = '#333333';
-            for (var i = 0; i < labelLines.length; i++) {
-              ctx.fillText(labelLines[i]||"", x, y+(i*lineHeight.height))
-              ctx.fillText(labelLines[i]||"", x, y+(i*lineHeight.height))
-            }
-          }
-        })    			
-
+        })
 
         // draw the edges
         particleSystem.eachEdge(function(edge, pt1, pt2){
@@ -155,7 +264,7 @@
             ctx.beginPath()
             ctx.lineWidth = (!isNaN(weight)) ? parseFloat(weight) : 1
             ctx.strokeStyle = (color) ? color : "#cccccc"
-            ctx.fillStyle = null
+            //ctx.fillStyle = null // this appears to be illegal
 
             ctx.moveTo(tail.x, tail.y)
             ctx.lineTo(head.x, head.y)
