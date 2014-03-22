@@ -1,14 +1,14 @@
 (function(){
   
-  Renderer = function(canvas){
+  Renderer = function(canvas) {
     var canvas = $(canvas).get(0)
     var ctx = canvas.getContext("2d");
     var gfx = arbor.Graphics(canvas)
     var particleSystem = null
     var horizMargin = 5
-    var vertMargin = 2
+    var vertMargin = 3
+    var mouse = {node:null,x:0,y:0}
           
-    
     var getTextHeight = function(font) {
 
   	  var text = $('<span>Hg</span>').css({ font: font });
@@ -43,7 +43,8 @@
           
       // draw a rectangle centered at pt
       if (node.data.color) ctx.fillStyle = node.data.color
-      else ctx.fillStyle = "rgba(0,0,0,.2)"
+//      else ctx.fillStyle = "rgba(0,0,0,.2)"
+      else ctx.fillStyle = "rgba(200,200,200,1)"
       if (node.data.color=='none') ctx.fillStyle = "white"
       if (node.data.shape=='dot'){
         w = Math.max(w,h)
@@ -71,12 +72,21 @@
         y-=diff
       }
       
-          
+      ctx.save()
+      if (node.data.shadow) {
+        var xoff = 4 * ((x/canvas.width)-0.25)
+        var yoff = 4 * ((y/canvas.height)-0.25)
+        ctx.shadowColor="#555555"
+        ctx.shadowOffsetX=xoff
+        ctx.shadowOffsetY=yoff
+        ctx.shadowBlur=10
+      }
       if (node.data.shape=='dot'){
         gfx.oval(x, y, w, h, {fill:ctx.fillStyle})
       }else{
-        gfx.rect(x, y, w, h, 4, {fill:ctx.fillStyle})
+        gfx.rect(x, y, w, h, 6, {fill:ctx.fillStyle})
       }
+      ctx.restore()
       var nodeBox = [x,y,w,h]
       return nodeBox
     };
@@ -118,7 +128,7 @@
       if (label){
         var align = "center"
         x = pt.x
-        y = pt.y-(totalHeight/2)+lineHeight.ascent
+        y = pt.y-(totalHeight/2)+lineHeight.ascent+2
         if (node.data.align!==undefined) {
       	  align = node.data.align
           if (align == "left") {
@@ -238,6 +248,11 @@
         	font = "12px Helvetica"
           }
           
+          if (node===mouse.node) {
+          	pt.x = mouse.x
+          	pt.y = mouse.y
+          }
+          
           if (node.data.html) {
             nodeBoxes[node.name] = drawHtml(node, pt, font)
           } else {
@@ -314,6 +329,9 @@
             var pos = $(canvas).offset();
             _mouseP = arbor.Point(e.pageX-pos.left, e.pageY-pos.top)
             selected = nearest = dragged = particleSystem.nearest(_mouseP);
+            mouse.node = selected.node
+            mouse.x = _mouseP.x
+            mouse.y = _mouseP.y
 
             if (dragged.node !== null) dragged.node.fixed = true
 
@@ -326,6 +344,8 @@
             var old_nearest = nearest && nearest.node._id
             var pos = $(canvas).offset();
             var s = arbor.Point(e.pageX-pos.left, e.pageY-pos.top)
+            mouse.x = s.x
+            mouse.y = s.y
 
             if (!nearest) return
             if (dragged !== null && dragged.node !== null){
@@ -343,6 +363,7 @@
             dragged.node.tempMass = 50
             dragged = null
             selected = null
+            mouse.node = null
             $(canvas).unbind('mousemove', handler.dragged)
             $(window).unbind('mouseup', handler.dropped)
             _mouseP = null
