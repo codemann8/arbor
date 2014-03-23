@@ -91,6 +91,27 @@
       return nodeBox
     };
     
+    function getImageDataURL(img) {
+//    function getBase64Image(img) {
+      // Create an empty canvas element
+      var canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+
+      // Copy the image contents to the canvas
+      var ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0);
+
+      // Get the data-URL formatted image
+      // Firefox supports PNG and JPEG. You could check img.src to guess the
+      // original format, but be aware the using "image/jpg" will re-encode the image.
+      /*
+      var dataURL = canvas.toDataURL("image/png");
+      return dataURL.replace(/^data:image\/(png|jpg);base64,/, "");
+      */
+      return canvas.toDataURL("image/png");
+    };
+    
     var drawText = function(node, pt, font) {
       // node: {mass:#, p:{x,y}, name:"", data:{}}
       // pt:   {x:#, y:#}  node position in screen coords
@@ -98,6 +119,7 @@
       //returns nodeBox
       
       node.data.box = null
+    	delete node.data.img
       node.data.img = null
         
       ctx.font = font
@@ -148,7 +170,15 @@
       
       return nodeBox
     };
-
+    
+    function qualifyURL(url){
+      var img = document.createElement('img')
+      img.src = url // set string url
+      url = img.src // get qualified url
+      img.src = '' // no server request
+      return url
+    };
+  
     var drawHtml = function(node, pt, defaultFont) {
       // node: {mass:#, p:{x,y}, name:"", data:{}}
       // pt:   {x:#, y:#}  node position in screen coords
@@ -157,10 +187,11 @@
       
     	var html = node.data.html
     	if (html=="test") {
-        html = "<div><span style='background-color:red'>Yo " +
+        node.data.html = "<div><span style='background-color:red'>Yo " +
         		"<span style='text-decoration:underline;font-style:oblique'>dude!</span></span></div>" +
         		"<div>Title Here</div>" +
         		"<table style='width:100px'>" +
+        		"<tr><td>Test Table</td><td><img src='"+arbor.etc.arbor_path()+"../demos/halfviz/style/logo.png'/></td></tr>" +
         		"<tr><td>ul</td><td style='text-align:right'>ur</td></tr>" +
         		"<tr><td>ll</td><td style='text-align:right'>lr</td></tr>" +
         		"</table>";
@@ -169,14 +200,42 @@
       var id ="renderToSVGDiv"
       var div =
         "<div id='"+id+"' xmlns='http://www.w3.org/1999/xhtml' style='font:"+defaultFont+"'>" +
-          html+
+          node.data.html+
         "</div>";
       
       if (node.data.box) {
         node.data.box = drawBox(pt, node.data.box[2], node.data.box[3], node)
       } else {
-//        window.document.getElementById('hiddenSVGDiv').innerHTML = "<div style='position:absolute;left:-999em;'>"+div+"</div>"
         window.document.getElementById('halfvizSVGDiv').innerHTML = div
+        if (node.data.allLoaded != div) {
+          var loader = imagesLoaded('#'+id, function(){
+            node.data.allLoaded = div
+            var parser = new DOMParser()
+            var doc = parser.parseFromString("<div>"+node.data.html+"</div>", "application/xml");
+            var images = doc.getElementsByTagName('img'); 
+            for(var i = 0; i < images.length; i++) {
+              var src = qualifyURL(images[i].attributes.src.value);
+              if (src.indexOf("data:") != 0) {
+                for(var j = 0; j < loader.images.length; j++) {
+                  if (loader.images[j].img.src == src) {
+                    images[i].attributes.src.value = getImageDataURL(loader.images[j].img);
+                  }
+                }
+              }
+            }
+            node.data.html=doc.firstChild.innerHTML
+            if (!node.data.html) {
+            	var tmp = document.createElement('div')
+              tmp.appendChild(doc.firstChild)
+              node.data.html=tmp.innerHTML.substring(5,tmp.innerHTML.length-6)
+            }
+          	node.data.box = null
+          	delete node.data.img
+            node.data.img = null
+            node.data.imgIsLoaded = false
+            node.fixed = node.fixed // trigger redraw
+          })
+        }
         var element = canvas.ownerDocument.getElementById(id);
         node.data.box = drawBox(pt, element.clientWidth+(horizMargin*2), element.clientHeight+(vertMargin*2), node)
       }
@@ -185,31 +244,27 @@
     	    ctx.drawImage(node.data.img, node.data.box[0]+horizMargin, node.data.box[1]+vertMargin)
         }
       } else {
-        var DOMURL = self.URL || self.webkitURL || self;
+        //var DOMURL = self.URL || self.webkitURL || self;
       	var img = new Image();
         var svgText = 
           "<svg xmlns='http://www.w3.org/2000/svg' width='"+node.data.box[2]+"' height='"+node.data.box[3]+"'>" +
           "<foreignObject width='100%' height='100%'>" +
             "<div id='"+id+"' xmlns='http://www.w3.org/1999/xhtml' style='font:"+defaultFont+
                 ";width="+node.data.box[2]+"px;height="+node.data.box[3]+"px'>" +
-              html+
+              node.data.html+
             "</div>"+
           "</foreignObject>" +
           "</svg>";
-        var svg = new Blob([svgText], {type: "image/svg+xml;charset=utf-8"});
-        var url = DOMURL.createObjectURL(svg);
-        img.width = node.data.box[2]
-        img.height = node.data.box[3]
+        
       	img.onload = function() {
           node.data.box = drawBox(pt, node.data.box[2], node.data.box[3], node)
+        	delete node.data.img
           node.data.img = img
           node.data.imgIsLoaded = true
     	    ctx.drawImage(img, node.data.box[0]+horizMargin, node.data.box[1]+vertMargin)
-          DOMURL.revokeObjectURL(url);
       	};
         node.data.imgIsLoaded = false
-        //img.src = "data:image/svg+xml,"+svgText
-        img.src = url;
+        img.src = "data:image/svg+xml,"+svgText
       }
   
       return node.data.box
