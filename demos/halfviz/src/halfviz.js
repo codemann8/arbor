@@ -65,7 +65,7 @@
       },
 
       newDoc:function(){
-        var lorem = "; some example nodes\nhello {color:red, label:HELLO}\nworld {color:orange}\n\n; some edges\nhello -> world {color:yellow}\nfoo -> bar {weight:5}\nbar -> baz {weight:2}"
+        var lorem = "; some example nodes\nhello {color:red, label:HELLO}\nworld {color:orange,html:test}\nlonely {html:<span style='font-weight:bold;font-family:Times'>Goodbye, <p>cruel world</p></span>}\n\n; some edges\nhello -> world {color:yellow}\nfoo -> bar {weight:5}\nbar -> baz {weight:2}"
         
         _code.val(lorem).focus()
         $.address.value("")

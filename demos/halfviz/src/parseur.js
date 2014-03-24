@@ -4,6 +4,9 @@
   // quick, incomplete (and surely buggy) ‘parser’ for reading in the halftone source 
   //
   Parseur = function(){
+    
+  	var doubleSemiComments = false
+  	
     var strip = function(s){ return s.replace(/^[\s\t]+|[\s\t]+$/g,'') }    
     var recognize = function(s){
       // return the first {.*} mapping in the string (or "" if none)
@@ -24,8 +27,9 @@
       })
       return s.substring(from, to)
     }
-    var unpack = function(os){
+    var unpack = function(os,html){
       // process {key1:val1, key2:val2, ...} in a recognized mapping str
+      // if there is an html place-holder, re-insert the given html
       if (!os) return {}
 
       var pairs = os.substring(1,os.length-1).split(/\s*,\s*/)
@@ -38,6 +42,9 @@
         var val = strip(kv.slice(1).join(":")) // put back any colons that are part of the value
         if (!isNaN(val)) val = parseFloat(val)
         if (val=='true'||val=='false') val = (val=='true')
+        if (key=="html" && val=="place-holder" && html) {
+        	val=html
+        }
         kv_data[key] = val
       })
       return kv_data
@@ -57,8 +64,25 @@
         if (bufstr.length>0) tokens.push({type:"ident", ident:bufstr})
         buf = ""
       }
+      
+      if(s.indexOf("doubleSemiComment") == 0 || s.substring(0,2) == ";;") {
+      	doubleSemiComments = true;
+        return tokens
+      }
+      
+      var html=s.match(/[{,][ \t]*html:.*>/i)
+      if (html) {
+        html=html[0] // coerce type from array of string to just one string (only the first match counts)
+        var firstChar = html.substring(0,1)
+        html=html.substring(1).trim().substring(5)
+      	s = s.replace(/[{,][ \t]*html:.*>/i,firstChar+'html:place-holder')      
+      }
 
-      s = s.replace(/([ \t]*)?;.*$/,'') // screen out comments
+      if (doubleSemiComments) {
+        s = s.replace(/([ \t]*)?;;.*$/,'') // screen out comments
+      } else {
+        s = s.replace(/([ \t]*)?;.*$/,'') // screen out comments
+      }
 
       for (var i=0, j=s.length;;){
         var c = s[i]
@@ -79,7 +103,7 @@
             buf += c
             i++
           }else{
-            var style = unpack(objStr)
+            var style = unpack(objStr,html)
             if (!$.isEmptyObject(style)){
               flush()
               tokens.push({type:"style", style:style})
@@ -152,6 +176,7 @@
       lechs:lechs,
       yack:yack,
       parse:function(s){
+        doubleSemiComments = false
         var lines = s.split('\n')
         var statements = []
         $.each(lines, function(i,line){
