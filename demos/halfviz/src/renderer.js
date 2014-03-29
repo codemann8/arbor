@@ -10,39 +10,59 @@
     var mouse = {node:null,x:0,y:0}
           
     var getTextHeight = function(font) {
+      
+	    var fontHeight = null
+  
+    	if (typeof(fontHeights) != "undefined") {
+    	  fontHeight = fontHeights[font]
+        if (fontHeight != null) {
+        	return fontHeight
+        }
+    	} else {
+    		fontHeights = []
+    	}
+      
+	    fontHeight = {}
+      
+  	  var body = $('body')
+      if (body[0].clientHeight < 1 || body[0].clientWidth < 1) {
+        fontHeight.ascent = 0;
+        fontHeight.height = 0;
+        fontHeight.descent = 0;
+      } else {
 
-  	  var text = $('<span>Hg</span>').css({ font: font });
-  	  var block = $('<div style="display: inline-block; width: 1px; height: 0px;"></div>');
+    	  var text = $('<span>Hg</span>').css({ font: font })
+    	  var block = $('<div style="display: inline-block; width: 1px; height: 0px;"></div>')
+    
+    	  var div = $('<div></div>')
+    	  div.append(text, block)
+    
+    	  body.append(div)
+    
+    	  try {
+    
+    	    block.css({ verticalAlign: 'baseline' })
+    	    fontHeight.ascent = block.offset().top - text.offset().top
+    
+    	    block.css({ verticalAlign: 'bottom' })
+    	    fontHeight.height = block.offset().top - text.offset().top
+    
+    	    fontHeight.descent = fontHeight.height - fontHeight.ascent
+    
+    	  } finally {
+    	    div.remove()
+    	  }
+        
+    	  fontHeights[font] = fontHeight
+      }
   
-  	  var div = $('<div></div>');
-  	  div.append(text, block);
-  
-  	  var body = $('body');
-  	  body.append(div);
-  
-  	  try {
-  
-  	    var result = {};
-  
-  	    block.css({ verticalAlign: 'baseline' });
-  	    result.ascent = block.offset().top - text.offset().top;
-  
-  	    block.css({ verticalAlign: 'bottom' });
-  	    result.height = block.offset().top - text.offset().top;
-  
-  	    result.descent = result.height - result.ascent;
-  
-  	  } finally {
-  	    div.remove();
-  	  }
-  
-  	  return result;
+  	  return fontHeight
   	};
     
     var drawBox = function(pt, w, h, node) {
           
       // draw a rectangle centered at pt
-      if (node.data.color) ctx.fillStyle = node.data.color
+      if (node.data.color && node.data.color != 'none') ctx.fillStyle = node.data.color
 //      else ctx.fillStyle = "rgba(0,0,0,.2)"
       else ctx.fillStyle = "rgba(200,200,200,1)"
       if (node.data.color=='none') ctx.fillStyle = "white"
@@ -74,12 +94,12 @@
       
       ctx.save()
       if (node.data.shadow) {
-        var xoff = 4 * ((x/canvas.width)-0.25)
-        var yoff = 4 * ((y/canvas.height)-0.25)
+        var xoff = 6 * ((x/canvas.width)-0.40)
+        var yoff = 6 * ((y/canvas.height)-0.40)
         ctx.shadowColor="#555555"
         ctx.shadowOffsetX=xoff
         ctx.shadowOffsetY=yoff
-        ctx.shadowBlur=10
+        ctx.shadowBlur=7
       }
       if (node.data.shape=='dot'){
         gfx.oval(x, y, w, h, {fill:ctx.fillStyle})
@@ -136,21 +156,21 @@
       if (label) {
       	labelLines = label.split("\\n")
       }
-      var lineHeight = getTextHeight(font)
-      var totalHeight = (lineHeight.height*labelLines.length)+vertMargin
+      var textHeight = getTextHeight(font)
+      var lineHeight = (textHeight.height*labelLines.length)+vertMargin
 
       var w = 0
       for (var i = 0; i < labelLines.length; i++) {
         w = Math.max(w,ctx.measureText(""+labelLines[i]).width + (horizMargin*2))
       }
-      var h = totalHeight
+      var h = lineHeight
       var nodeBox = drawBox(pt, w, h, node)
 
       // draw the text
       if (label){
         var align = "center"
         x = pt.x
-        y = pt.y-(totalHeight/2)+lineHeight.ascent+2
+        y = pt.y-(lineHeight/2)+textHeight.ascent+2
         if (node.data.align!==undefined) {
       	  align = node.data.align
           if (align == "left") {
@@ -160,11 +180,15 @@
           }
         }
         ctx.textAlign = align
-        ctx.fillStyle = "white"
-        if (node.data.color=='none') ctx.fillStyle = '#333333'
+        if (node.data.fontcolor) {
+        	ctx.fillStyle = node.data.fontcolor
+        } else {
+          ctx.fillStyle = "white"
+          if (node.data.color=='none') ctx.fillStyle = '#333333'
+        }
         for (var i = 0; i < labelLines.length; i++) {
-          ctx.fillText(labelLines[i]||"", x, y+(i*lineHeight.height))
-          ctx.fillText(labelLines[i]||"", x, y+(i*lineHeight.height))
+          ctx.fillText(labelLines[i]||"", x, y+(i*textHeight.height))
+          ctx.fillText(labelLines[i]||"", x, y+(i*textHeight.height))
         }
       }
       
@@ -257,11 +281,13 @@
           "</svg>";
         
       	img.onload = function() {
-          node.data.box = drawBox(pt, node.data.box[2], node.data.box[3], node)
         	delete node.data.img
           node.data.img = img
           node.data.imgIsLoaded = true
-    	    ctx.drawImage(img, node.data.box[0]+horizMargin, node.data.box[1]+vertMargin)
+          if (node.data.box != null) {
+            node.data.box = drawBox(pt, node.data.box[2], node.data.box[3], node)
+      	    ctx.drawImage(img, node.data.box[0]+horizMargin, node.data.box[1]+vertMargin)
+          }
       	};
         node.data.imgIsLoaded = false
         img.src = "data:image/svg+xml,"+svgText
@@ -300,7 +326,7 @@
           if (node.data.font) {
         	font = node.data.font
           } else {
-        	font = "12px Helvetica"
+        	font = "12px Arial"
           }
           
           if (node===mouse.node) {
@@ -313,6 +339,8 @@
           } else {
             nodeBoxes[node.name] = drawText(node, pt, font)
           }
+// Not sure if something like this will help. Seems random...
+          node.mass = Math.log(Math.max(5,(nodeBoxes[node.name][2]*nodeBoxes[node.name][3])/100))*4
         })
 
         // draw the edges
@@ -320,6 +348,14 @@
           // edge: {source:Node, target:Node, length:#, data:{}}
           // pt1:  {x:#, y:#}  source position in screen coords
           // pt2:  {x:#, y:#}  target position in screen coords
+          
+          var source_box = nodeBoxes[edge.source.name]
+          var target_box = nodeBoxes[edge.target.name]
+// OVERRIDE POINTS WITH CENTER OF BOXES
+        	pt1.x = source_box[0]+(source_box[2]/2)
+        	pt1.y = source_box[1]+(source_box[3]/2)
+        	pt2.x = target_box[0]+(target_box[2]/2)
+        	pt2.y = target_box[1]+(target_box[3]/2)
 
           var weight = edge.data.weight
           var color = edge.data.color
@@ -327,8 +363,8 @@
           if (!color || (""+color).match(/^[ \t]*$/)) color = null
 
           // find the start point
-          var tail = intersect_line_box(pt1, pt2, nodeBoxes[edge.source.name])
-          var head = intersect_line_box(tail, pt2, nodeBoxes[edge.target.name])
+          var tail = intersect_line_box(pt1, pt2, source_box)
+          var head = intersect_line_box(tail, pt2, target_box)
 
           ctx.save() 
             ctx.beginPath()
@@ -365,10 +401,49 @@
               ctx.fill();
             ctx.restore()
           }
+            
+          if (edge.data.label){
+            ctx.save()
+              var minx = Math.min(head.x,tail.x)
+              var miny = Math.min(head.y,tail.y)
+              var maxx = Math.max(head.x,tail.x)
+              var maxy = Math.max(head.y,tail.y)
+              var midx = minx + ((maxx - minx) / 2)
+              var midy = miny + ((maxy - miny) / 2)
+              
+              ctx.translate(midx, midy);
+              var angle = Math.atan2(head.y - tail.y, head.x - tail.x) - Math.PI/2;
+              if (angle < (0-(Math.PI/2))) {
+              	angle += Math.PI
+              }
+              ctx.rotate(angle);
+            
+              var font
+              if (edge.data.font) {
+              	font = edge.data.font
+              } else {
+              	font = "12px Arial"
+              }
+              ctx.font = font
+              ctx.textAlign = "center"
+              var textHeight = getTextHeight(font)
+              var h = textHeight.height
+              var w = ctx.measureText(edge.data.label).width
+              if (edge.data.labelbackground) {
+                ctx.fillStyle = edge.data.labelbackground
+              } else {
+                ctx.fillStyle = "white"
+              }
+              gfx.rect(-(w/2)-2, -(h/2), w+4, h, 0, {fill:ctx.fillStyle})
+              if (edge.data.fontcolor) {
+                ctx.fillStyle = edge.data.fontcolor
+              } else {
+                ctx.fillStyle = "black"
+              }
+              ctx.fillText(edge.data.label, 0, ((textHeight.ascent-textHeight.descent)/2))
+            ctx.restore()
+          }
         })
-
-
-
       },
       initMouseHandling:function(){
         // no-nonsense drag and drop (thanks springy.js)

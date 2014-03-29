@@ -65,7 +65,21 @@
       },
 
       newDoc:function(){
-        var lorem = "; example global style\n{shadow:true}\n\n; some example nodes\nhello {color:red, label:HELLO}\nworld {color:orange,html:test}\nlonely {html:<span style='font-weight:bold;font-family:Times'>Goodbye, <p>cruel world</p></span>}\n\n; some edges\n{shadow:false}\nhello -> world {color:yellow}\nfoo -> bar {weight:5}\nbar -> baz {weight:2}"
+        var lorem = "; example global style\n" +
+        		"{shadow:true,fontcolor:blue}\n" +
+        		"->{weight:2,fontcolor:green}\n\n" +
+        		//"{shadow:true, edge-font:8px Times New Roman}\n\n" +
+        		"; some example nodes\n" +
+        		"hello {color:red, label:HELLO}\n" +
+        		"world {color:orange,html:test}\n" +
+        		"lonely {html:<span style='font-weight:bold;font-family:Times'>Goodbye, <p>cruel world</p></span>}\n\n" +
+        		"; some edges\n" +
+        		"{shadow:false}\n" +
+        		"hello -- world {color:#223344}\n" +
+        		"foo -> bar {weight:5, font:italic 20px Arial}\n" +
+        		"bar -> baz {weight:2,label:agIye,font:14px Times,labelbackground:pink,fontcolor:red}\n" +
+        		"bar -> hello {label:to say}\n" +
+        		"hello -> bar";
         
         _code.val(lorem).focus()
         $.address.value("")
