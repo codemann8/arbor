@@ -7,6 +7,7 @@
     var particleSystem = null
     var horizMargin = 5
     var vertMargin = 3
+    var shadowBorder = 6
     var mouse = {node:null,x:0,y:0}
           
     var getTextHeight = function(font) {
@@ -70,32 +71,40 @@
         w = Math.max(w,h)
         h = Math.max(w,h)
       }
+      var fullW = w
+      var fullH = h
+      if (node.data.shadow) {
+        fullW += (2*shadowBorder)
+        fullH += (2*shadowBorder)
+    	}
       
       var x = pt.x-w/2
       var y = pt.y-h/2
+      var fullX = pt.x-fullW/2
+      var fullY = pt.y-fullH/2
       
-      if (x<0) {
-      	pt.x-=x
-      	x=0
-      } else if ((x+w) > canvas.width && w < canvas.width) {
-      	var diff=(x+w)-canvas.width
+      if (fullX<0) {
+      	pt.x-=fullX
+      	x=x-fullX
+      } else if ((fullX+fullW) > canvas.width && fullW < canvas.width) {
+      	var diff=(fullX+fullW)-canvas.width
       	pt.x-=diff
-        x-=diff
+        x-=(diff+(x-fullX))
       }
           
       if (y<0) {
-      	pt.y-=y
-      	y=0
-      } else if ((y+h) > canvas.height && h < canvas.height) {
-      	var diff=(y+h)-canvas.height
+      	pt.y-=fullY
+      	y=y-fullY
+      } else if ((fullY+fullH) > canvas.height && fullH < canvas.height) {
+      	var diff=(fullY+fullH)-canvas.height
       	pt.y-=diff
-        y-=diff
+        y-=(diff+(y-fullY))
       }
       
       ctx.save()
       if (node.data.shadow) {
-        var xoff = 6 * ((x/canvas.width)-0.40)
-        var yoff = 6 * ((y/canvas.height)-0.40)
+        var xoff = shadowBorder * ((x/canvas.width)-0.40)
+        var yoff = shadowBorder * ((y/canvas.height)-0.40)
         ctx.shadowColor="#555555"
         ctx.shadowOffsetX=xoff
         ctx.shadowOffsetY=yoff
@@ -340,7 +349,7 @@
             nodeBoxes[node.name] = drawText(node, pt, font)
           }
 // Not sure if something like this will help. Seems random...
-          node.mass = Math.log(Math.max(5,(nodeBoxes[node.name][2]*nodeBoxes[node.name][3])/100))*4
+          node.mass = Math.log(Math.max(5,(nodeBoxes[node.name][2]*nodeBoxes[node.name][3])/100))/4
         })
 
         // draw the edges

@@ -38,11 +38,13 @@
         that.resize()
         that.updateLayout(Math.max(1, $(window).width()-340))
 
-        _code.keydown(that.typing)
-        _grabber.bind('mousedown', that.grabbed)
+        if (_code.length > 0) {
+          _code.keydown(that.typing)
+          _grabber.bind('mousedown', that.grabbed)
 
-        $(that.io).bind('get', that.getDoc)
-        $(that.io).bind('clear', that.newDoc)
+          $(that.io).bind('get', that.getDoc)
+          $(that.io).bind('clear', that.newDoc)
+        }
         return that
       },
       
@@ -89,8 +91,13 @@
       },
 
       updateGraph:function(e){
-        var src_txt = _code.val()
-        var network = parse(src_txt)
+        if (_code.length > 0) {
+          var src_txt = _code.val()
+          that.setNetwork(parse(src_txt))
+        }
+      },
+      
+      setNetwork:function(network) {
         var fixed = false;
         if (Object.keys(network.nodes).length < 2) {
         /* Resolve a bug when there is only one node,
@@ -114,25 +121,34 @@
       },
       
       updateLayout:function(split){
-        var w = dom.width()
-        var h = _grabber.height()
-        var split = split || _grabber.offset().left
-        var splitW = _grabber.width()
-        _grabber.css('left',split)
-
-        var edW = w - split
-        var edH = h
-        _ed.css({width:edW, height:edH})
-        if (split > w-20) _ed.hide()
-        else _ed.show()
-
-        var canvW = split - splitW
-        var canvH = h
+        var canvW = 0
+        var canvH = 0
+        if (_grabber.length > 0) {
+          var w = dom.width()
+          var h = _grabber.height()
+          var split = split || _grabber.offset().left
+          var splitW = _grabber.width()
+          _grabber.css('left',split)
+  
+          var edW = w - split
+          var edH = h
+          _ed.css({width:edW, height:edH})
+          if (split > w-20) _ed.hide()
+          else _ed.show()
+  
+          canvW = split - splitW
+          canvH = h
+        } else {
+          canvW = dom.width()
+          canvH = dom.height()
+        }
         _canvas.width = canvW
         _canvas.height = canvH
         sys.screenSize(canvW, canvH)
                 
-        _code.css({height:h-20,  width:edW-4, marginLeft:2})
+        if (_code.length > 0) {
+          _code.css({height:h-20,  width:edW-4, marginLeft:2})
+        }
       },
       
       grabbed:function(e){
