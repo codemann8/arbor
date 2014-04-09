@@ -13,7 +13,8 @@
       var from = -1,
           to = -1,
           depth = 0;
-      $.each(s, function(i, c){
+      for (var i=0; i<s.length; i++) {
+        var c = s[i]
         switch (c){
           case '{':
             if (depth==0 && from==-1) from = i
@@ -24,7 +25,7 @@
             if (depth==0 && to==-1) to = i+1
             break
         }
-      })
+      }
       return s.substring(from, to)
     }
     var unpack = function(os,html){

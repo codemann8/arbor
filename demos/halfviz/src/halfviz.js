@@ -16,7 +16,7 @@
     var dom = $(elt)
 
     sys = arbor.ParticleSystem(2600, 512, 0.5)
-    sys.renderer = Renderer("#viewport") // our newly created renderer will have its .init() method called shortly by sys...
+    sys.renderer = Renderer(this, "#viewport") // our newly created renderer will have its .init() method called shortly by sys...
     sys.screenPadding(20)
     
     var _ed = dom.find('#editor')
@@ -30,6 +30,9 @@
     var _failures = null
     
     var that = {
+      canvas:_canvas,
+      window:window,
+      network:null,
       dashboard:Dashboard("#dashboard", sys),
       io:IO("#editor .io"),
       init:function(){
@@ -90,14 +93,24 @@
         _editing = false
       },
 
+      redraw:function(){
+        sys.renderer.redraw()
+      },
+
       updateGraph:function(e){
         if (_code.length > 0) {
           var src_txt = _code.val()
           that.setNetwork(parse(src_txt))
+        } else {
+        	that.setNetwork(that.network)
         }
       },
       
       setNetwork:function(network) {
+        if (network == null) {
+        	network = {nodes:[],edges:[]}
+        }
+        that.network = network
         var fixed = false;
         if (Object.keys(network.nodes).length < 2) {
         /* Resolve a bug when there is only one node,
@@ -109,8 +122,16 @@
           if (ndata.label===undefined) ndata.label = nname
           ndata.fixed = fixed;
         })
+        if (network.parameters) {
+        	sys.parameters(network.parameters)
+          that.dashboard.update()
+        }
         sys.merge(network)
         _updateTimeout = null
+      },
+      
+      pick:function(x,y){
+        return sys.renderer.pick(x,y)
       },
       
       resize:function(){        
@@ -188,8 +209,11 @@
 
   $(document).ready(function(){
     var mcp = HalfViz("#halfviz");
-    document.halfviz = mcp; 
       /* this helps GWT apps embedded in iframes find the halfviz object */
+    document.halfviz = mcp; 
+    if (document.onHalfVizLoaded) {
+    	document.onHalfVizLoaded(mcp)
+    }
   })
 
   

@@ -11,6 +11,10 @@
     var that = {
       init:function(){
         
+      	if (dom.find('.ctrl > a').length == 0) {
+      		return
+      	}
+        
         dom.find('.ctrl > a').live('click', that.menuClick)
         _dialog.find('li>a').live('click', that.exampleClick)
         

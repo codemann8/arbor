@@ -1,6 +1,7 @@
 (function(){
   
-  Renderer = function(canvas) {
+  Renderer = function(halfviz, canvas) {
+    var halfviz = halfviz
     var canvas = $(canvas).get(0)
     var ctx = canvas.getContext("2d");
     var gfx = arbor.Graphics(canvas)
@@ -85,27 +86,34 @@
       
       if (fullX<0) {
       	pt.x-=fullX
-      	x=x-fullX
+      	x-=fullX
       } else if ((fullX+fullW) > canvas.width && fullW < canvas.width) {
       	var diff=(fullX+fullW)-canvas.width
       	pt.x-=diff
-        x-=(diff+(x-fullX))
+        //x-=(diff+(x-fullX))
+        x-=diff
       }
           
       if (y<0) {
       	pt.y-=fullY
-      	y=y-fullY
+      	//y=y-fullY
+      	y-=fullY
       } else if ((fullY+fullH) > canvas.height && fullH < canvas.height) {
       	var diff=(fullY+fullH)-canvas.height
       	pt.y-=diff
-        y-=(diff+(y-fullY))
+        //y-=(diff+(y-fullY))
+        y-=diff
       }
       
       ctx.save()
       if (node.data.shadow) {
         var xoff = shadowBorder * ((x/canvas.width)-0.40)
         var yoff = shadowBorder * ((y/canvas.height)-0.40)
-        ctx.shadowColor="#555555"
+        if (node.data.highlighted) {
+          ctx.shadowColor="#cc00ff"
+        } else {
+          ctx.shadowColor="#555555"
+        }
         ctx.shadowOffsetX=xoff
         ctx.shadowOffsetY=yoff
         ctx.shadowBlur=7
@@ -201,7 +209,9 @@
         }
       }
       
-      return nodeBox
+      node.data.box = nodeBox
+      
+      //return node.data.box
     };
     
     function qualifyURL(url){
@@ -302,7 +312,7 @@
         img.src = "data:image/svg+xml,"+svgText
       }
   
-      return node.data.box
+      //return node.data.box
     }
     
     var that = {
@@ -324,7 +334,7 @@
         gfx.clear() // convenience ƒ: clears the whole canvas rect
 
         // draw the nodes & save their bounds for edge drawing
-        var nodeBoxes = {}
+        //var nodeBoxes = {}
         particleSystem.eachNode(function(node, pt){
           // node: {mass:#, p:{x,y}, name:"", data:{}}
           // pt:   {x:#, y:#}  node position in screen coords
@@ -344,12 +354,12 @@
           }
           
           if (node.data.html) {
-            nodeBoxes[node.name] = drawHtml(node, pt, font)
+            //nodeBoxes[node.name] = drawHtml(node, pt, font)
+            drawHtml(node, pt, font)
           } else {
-            nodeBoxes[node.name] = drawText(node, pt, font)
+            //nodeBoxes[node.name] = drawText(node, pt, font)
+            drawText(node, pt, font)
           }
-// Not sure if something like this will help. Seems random...
-          node.mass = Math.log(Math.max(5,(nodeBoxes[node.name][2]*nodeBoxes[node.name][3])/100))/4
         })
 
         // draw the edges
@@ -358,8 +368,10 @@
           // pt1:  {x:#, y:#}  source position in screen coords
           // pt2:  {x:#, y:#}  target position in screen coords
           
-          var source_box = nodeBoxes[edge.source.name]
-          var target_box = nodeBoxes[edge.target.name]
+          //var source_box = nodeBoxes[edge.source.name]
+          //var target_box = nodeBoxes[edge.target.name]
+          var source_box = edge.source.data.box
+          var target_box = edge.target.data.box
 // OVERRIDE POINTS WITH CENTER OF BOXES
         	pt1.x = source_box[0]+(source_box[2]/2)
         	pt1.y = source_box[1]+(source_box[3]/2)
@@ -374,143 +386,191 @@
           // find the start point
           var tail = intersect_line_box(pt1, pt2, source_box)
           var head = intersect_line_box(tail, pt2, target_box)
-
-          ctx.save() 
-            ctx.beginPath()
-            ctx.lineWidth = (!isNaN(weight)) ? parseFloat(weight) : 1
-            ctx.strokeStyle = (color) ? color : "#cccccc"
-            //ctx.fillStyle = null // this appears to be illegal
-
-            ctx.moveTo(tail.x, tail.y)
-            ctx.lineTo(head.x, head.y)
-            ctx.stroke()
-          ctx.restore()
-
-          // draw an arrowhead if this is a -> style edge
-          if (edge.data.directed){
-            ctx.save()
-              // move to the head position of the edge we just drew
-              var wt = !isNaN(weight) ? parseFloat(weight) : 1
-              var arrowLength = 6 + wt
-              var arrowWidth = 2 + wt
-              ctx.fillStyle = (color) ? color : "#cccccc"
-              ctx.translate(head.x, head.y);
-              ctx.rotate(Math.atan2(head.y - tail.y, head.x - tail.x));
-
-              // delete some of the edge that's already there (so the point isn't hidden)
-              ctx.clearRect(-arrowLength/2,-wt/2, arrowLength/2,wt)
-
-              // draw the chevron
-              ctx.beginPath();
-              ctx.moveTo(-arrowLength, arrowWidth);
-              ctx.lineTo(0, 0);
-              ctx.lineTo(-arrowLength, -arrowWidth);
-              ctx.lineTo(-arrowLength * 0.8, -0);
-              ctx.closePath();
-              ctx.fill();
+          
+          if (head && tail) {
+  
+            ctx.save() 
+              ctx.beginPath()
+              ctx.lineWidth = (!isNaN(weight)) ? parseFloat(weight) : 1
+              ctx.strokeStyle = (color) ? color : "#cccccc"
+              //ctx.fillStyle = null // this appears to be illegal
+  
+              ctx.moveTo(tail.x, tail.y)
+              ctx.lineTo(head.x, head.y)
+              ctx.stroke()
             ctx.restore()
-          }
-            
-          if (edge.data.label){
-            ctx.save()
-              var minx = Math.min(head.x,tail.x)
-              var miny = Math.min(head.y,tail.y)
-              var maxx = Math.max(head.x,tail.x)
-              var maxy = Math.max(head.y,tail.y)
-              var midx = minx + ((maxx - minx) / 2)
-              var midy = miny + ((maxy - miny) / 2)
+  
+            // draw an arrowhead if this is a -> style edge
+            if (edge.data.directed){
+              ctx.save()
+                // move to the head position of the edge we just drew
+                var wt = !isNaN(weight) ? parseFloat(weight) : 1
+                var arrowLength = 6 + wt
+                var arrowWidth = 2 + wt
+                ctx.fillStyle = (color) ? color : "#cccccc"
+                ctx.translate(head.x, head.y);
+                ctx.rotate(Math.atan2(head.y - tail.y, head.x - tail.x));
+  
+                // delete some of the edge that's already there (so the point isn't hidden)
+                ctx.clearRect(-arrowLength/2,-wt/2, arrowLength/2,wt)
+  
+                // draw the chevron
+                ctx.beginPath();
+                ctx.moveTo(-arrowLength, arrowWidth);
+                ctx.lineTo(0, 0);
+                ctx.lineTo(-arrowLength, -arrowWidth);
+                ctx.lineTo(-arrowLength * 0.8, -0);
+                ctx.closePath();
+                ctx.fill();
+              ctx.restore()
+            }
               
-              ctx.translate(midx, midy);
-              var angle = Math.atan2(head.y - tail.y, head.x - tail.x) - Math.PI/2;
-              if (angle < (0-(Math.PI/2))) {
-              	angle += Math.PI
-              }
-              ctx.rotate(angle);
-            
-              var font
-              if (edge.data.font) {
-              	font = edge.data.font
-              } else {
-              	font = "12px Arial"
-              }
-              ctx.font = font
-              ctx.textAlign = "center"
-              var textHeight = getTextHeight(font)
-              var h = textHeight.height
-              var w = ctx.measureText(edge.data.label).width
-              if (edge.data.labelbackground) {
-                ctx.fillStyle = edge.data.labelbackground
-              } else {
-                ctx.fillStyle = "white"
-              }
-              gfx.rect(-(w/2)-2, -(h/2), w+4, h, 0, {fill:ctx.fillStyle})
-              if (edge.data.fontcolor) {
-                ctx.fillStyle = edge.data.fontcolor
-              } else {
-                ctx.fillStyle = "black"
-              }
-              ctx.fillText(edge.data.label, 0, ((textHeight.ascent-textHeight.descent)/2))
-            ctx.restore()
+            if (edge.data.label){
+              ctx.save()
+                var minx = Math.min(head.x,tail.x)
+                var miny = Math.min(head.y,tail.y)
+                var maxx = Math.max(head.x,tail.x)
+                var maxy = Math.max(head.y,tail.y)
+                var midx = minx + ((maxx - minx) / 2)
+                var midy = miny + ((maxy - miny) / 2)
+                
+                ctx.translate(midx, midy);
+                var angle = Math.atan2(head.y - tail.y, head.x - tail.x) - Math.PI/2;
+                if (angle < (0-(Math.PI/2))) {
+                	angle += Math.PI
+                }
+                ctx.rotate(angle);
+              
+                var font
+                if (edge.data.font) {
+                	font = edge.data.font
+                } else {
+                	font = "12px Arial"
+                }
+                ctx.font = font
+                ctx.textAlign = "center"
+                var textHeight = getTextHeight(font)
+                var h = textHeight.height
+                var w = ctx.measureText(edge.data.label).width
+                if (edge.data.labelbackground) {
+                  ctx.fillStyle = edge.data.labelbackground
+                } else {
+                  ctx.fillStyle = "white"
+                }
+                gfx.rect(-(w/2)-2, -(h/2), w+4, h, 0, {fill:ctx.fillStyle})
+                if (edge.data.fontcolor) {
+                  ctx.fillStyle = edge.data.fontcolor
+                } else {
+                  ctx.fillStyle = "black"
+                }
+                ctx.fillText(edge.data.label, 0, ((textHeight.ascent-textHeight.descent)/2))
+              ctx.restore()
+            }
           }
         })
       },
       initMouseHandling:function(){
         // no-nonsense drag and drop (thanks springy.js)
-        selected = null;
-        nearest = null;
-        var dragged = null;
+        selected = null
+        nearest = null
+        var dragged = null
         var oldmass = 1
+        var didDrag = false
+        var deltaX = 0
+        var deltaY = 0
 
         // set up a handler object that will initially listen for mousedowns then
         // for moves and mouseups while dragging
         var handler = {
           clicked:function(e){
+            if (e.which != 1) {
+            	return
+            }
             var pos = $(canvas).offset();
             _mouseP = arbor.Point(e.pageX-pos.left, e.pageY-pos.top)
-            selected = nearest = dragged = particleSystem.nearest(_mouseP);
-            mouse.node = selected.node
-            mouse.x = _mouseP.x
-            mouse.y = _mouseP.y
-
-            if (dragged.node !== null) dragged.node.fixed = true
-
-            $(canvas).bind('mousemove', handler.dragged)
-            $(window).bind('mouseup', handler.dropped)
-
+            //selected = nearest = dragged = particleSystem.nearest(_mouseP).node;
+            selected = nearest = dragged = that.pick(_mouseP.x, _mouseP.y);
+            
+            if (selected) {
+              s = particleSystem.toScreen(selected.p)
+              
+              deltaX = s.x - _mouseP.x
+              deltaY = s.y - _mouseP.y
+  
+              $(canvas).bind('mousemove', handler.dragged)
+              $(window).bind('mouseup', handler.dropped)
+              didDrag = false
+            }
+            
             return false
           },
           dragged:function(e){
-            var old_nearest = nearest && nearest.node._id
+            var old_nearest = nearest && nearest._id
             var pos = $(canvas).offset();
             var s = arbor.Point(e.pageX-pos.left, e.pageY-pos.top)
+            s.x += deltaX
+            s.y += deltaY
+            if (!didDrag) {
+            	if (mouse.x != s.x || mouse.y != s.y) {
+            		didDrag = true
+            	}
+            }
+            mouse.node = selected
             mouse.x = s.x
             mouse.y = s.y
 
             if (!nearest) return
-            if (dragged !== null && dragged.node !== null){
-              var p = particleSystem.fromScreen(s)
-              dragged.node.p = p
+            if (dragged !== null){
+              var p = particleSystem.fromScreen(mouse)
+              dragged.p = p
+              dragged.fixed = true
             }
 
             return false
           },
 
           dropped:function(e){
-            if (dragged===null || dragged.node===undefined) return
-            if (dragged.node !== null) dragged.node.fixed = that.fixed
-            //dragged.node.tempMass = 1000
-            dragged.node.tempMass = 50
+            if (didDrag) {
+              if (dragged !== null) dragged.fixed = that.fixed
+              //dragged.tempMass = 1000
+              dragged.tempMass = 50
+            }
             dragged = null
             selected = null
             mouse.node = null
             $(canvas).unbind('mousemove', handler.dragged)
             $(window).unbind('mouseup', handler.dropped)
             _mouseP = null
+            didDrag = false
             return false
           }
         }
         $(canvas).mousedown(handler.clicked);
 
+      },
+      
+      pick:function(x,y){
+        var reverse = [];
+        var i = 0;
+        particleSystem.eachNode(function(node, pt){
+          reverse[i++] = node
+        });
+        reverse.reverse()
+        
+        var picked = null
+        
+        // Loop through nodes backwards since topmost overlapping nodes were drawn last
+        $.each(reverse, function(index, node){
+          var ulx = node.data.box[0];
+          var uly = node.data.box[1];
+          var lrx = ulx+node.data.box[2];
+          var lry = uly+node.data.box[3];
+          if (x >= ulx && x <= lrx && y >= uly && y <= lry) {
+          	picked = node
+            return false // break out of $.each()
+          }
+        });
+        return picked
       }
 
     }
