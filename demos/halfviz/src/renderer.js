@@ -1,7 +1,6 @@
 (function(){
   
-  Renderer = function(halfviz, canvas) {
-    var halfviz = halfviz
+  Renderer = function(canvas) {
     var canvas = $(canvas).get(0)
     var ctx = canvas.getContext("2d");
     var gfx = arbor.Graphics(canvas)
@@ -68,6 +67,13 @@
 //      else ctx.fillStyle = "rgba(0,0,0,.2)"
       else ctx.fillStyle = "rgba(200,200,200,1)"
       if (node.data.color=='none') ctx.fillStyle = "white"
+      
+      if (node.data.minwidth) {
+      	w = Math.max(w,node.data.minwidth)
+      }
+      if (node.data.minheight) {
+      	h = Math.max(h,node.data.minheight)
+      }
       if (node.data.shape=='dot'){
         w = Math.max(w,h)
         h = Math.max(w,h)
@@ -106,6 +112,7 @@
       }
       
       ctx.save()
+      var stroke = false
       if (node.data.shadow) {
         var xoff = shadowBorder * ((x/canvas.width)-0.40)
         var yoff = shadowBorder * ((y/canvas.height)-0.40)
@@ -117,11 +124,19 @@
         ctx.shadowOffsetX=xoff
         ctx.shadowOffsetY=yoff
         ctx.shadowBlur=7
+      } else if (node.data.highlighted) {
+        ctx.beginPath
+        ctx.strokeStyle="#cc00ff"
+      	ctx.lineWidth=4
+        stroke = true
       }
       if (node.data.shape=='dot'){
         gfx.oval(x, y, w, h, {fill:ctx.fillStyle})
       }else{
         gfx.rect(x, y, w, h, 6, {fill:ctx.fillStyle})
+      }
+      if (stroke) {
+      	ctx.stroke()
       }
       ctx.restore()
       var nodeBox = [x,y,w,h]
@@ -318,6 +333,7 @@
     var that = {
         
   	  fixed:false,
+      halfviz:null, // will be set soon by halfviz
       
       init:function(system){
         
@@ -328,6 +344,10 @@
         that.initMouseHandling()
       },
 
+      setHalfViz:function(halfviz){
+        that.halfviz = halfviz
+      },
+      
       redraw:function(){
         if (!particleSystem) return
 
@@ -343,9 +363,9 @@
           // drawing a text label (awful alignment jitter otherwise...)
           var font
           if (node.data.font) {
-        	font = node.data.font
+          	font = node.data.font
           } else {
-        	font = "12px Arial"
+          	font = that.halfviz.defaultNodeFont
           }
           
           if (node===mouse.node) {
@@ -425,7 +445,7 @@
               ctx.restore()
             }
               
-            if (edge.data.label){
+            if (edge.data.label && (!edge.data.hideLabel)){
               ctx.save()
                 var minx = Math.min(head.x,tail.x)
                 var miny = Math.min(head.y,tail.y)
@@ -445,7 +465,7 @@
                 if (edge.data.font) {
                 	font = edge.data.font
                 } else {
-                	font = "12px Arial"
+                	font = that.halfviz.defaultNodeFont
                 }
                 ctx.font = font
                 ctx.textAlign = "center"

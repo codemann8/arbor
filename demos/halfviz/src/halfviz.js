@@ -16,7 +16,7 @@
     var dom = $(elt)
 
     sys = arbor.ParticleSystem(2600, 512, 0.5)
-    sys.renderer = Renderer(this, "#viewport") // our newly created renderer will have its .init() method called shortly by sys...
+    sys.renderer = Renderer("#viewport") // our newly created renderer will have its .init() method called shortly by sys...
     sys.screenPadding(20)
     
     var _ed = dom.find('#editor')
@@ -35,6 +35,7 @@
       network:null,
       dashboard:Dashboard("#dashboard", sys),
       io:IO("#editor .io"),
+    	defaultNodeFont:"10px Arial",
       init:function(){
         
         $(window).resize(that.resize)
@@ -48,6 +49,8 @@
           $(that.io).bind('get', that.getDoc)
           $(that.io).bind('clear', that.newDoc)
         }
+        that.dashboard.setHalfViz(that)
+        sys.renderer.setHalfViz(that)
         return that
       },
       
@@ -94,6 +97,16 @@
       },
 
       redraw:function(){
+        sys.renderer.redraw()
+      },
+
+      getParameters:function(){
+        return sys.parameters()
+      },
+
+      setParameters:function(parameters){
+        sys.parameters(parameters)
+        that.dashboard.update()
         sys.renderer.redraw()
       },
 
