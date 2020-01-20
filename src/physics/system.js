@@ -664,41 +664,51 @@
     };
     
     // some magic attrs to make the Node objects phone-home their physics-relevant changes
-    defineProperty(Node.prototype, "p",
-    		{get:function() { 
-			        var self = this
-			        var roboPoint = new Point();
-			        defineProperty(roboPoint, "x",
-			        		{get:function(){ return self._p.x; },
-			        	     set:function(newX){ state.kernel.particleModified(self._id, {x:newX}) }});
-			        defineProperty(roboPoint, "y",
-			        		{get:function(){ return self._p.y; },
-			        	     set:function(newY){ state.kernel.particleModified(self._id, {y:newY}) }});
-			        return roboPoint
-			     },
-			 set:function(newP) { 
-			        this._p.x = newP.x
-			        this._p.y = newP.y
-			        state.kernel.particleModified(this._id, {x:newP.x, y:newP.y})
-			     }});
+    Object.defineProperty(Node.prototype, "p", {
+      get: function() {
+        var self = this
+        var roboPoint = Object.create(Point.prototype)
+        
+        Object.defineProperty(roboPoint, 'x', {
+          get: function() { return self._p.x; },
+          set: function(newX) { state.kernel.particleModified(self._id, {x:newX}) }
+        })
+        Object.defineProperty(roboPoint, 'y', {
+          get: function () { return self._p.y; },
+          set: function(newY) { state.kernel.particleModified(self._id, {y:newY}) }
+        })
+        
+        return roboPoint
+      },
+      set: function(newP) {
+        this._p.x = newP.x
+        this._p.y = newP.y
+        state.kernel.particleModified(this._id, {x:newP.x, y:newP.y})
+      }
+    })
     
-    defineProperty(Node.prototype, "mass",
-    		{get:function() { return this._mass; },
-    	     set:function(newM) { 
-    	            this._mass = newM
-    	            state.kernel.particleModified(this._id, {m:newM})
-    	         }});
+    Object.defineProperty(Node.prototype, "mass", {
+      get: function() { return this._mass; },
+      set: function(newM) {
+        this._mass = newM
+        state.kernel.particleModified(this._id, {m:newM})
+      }
+    })
     
-    defineProperty(Node.prototype, "tempMass", {set:function(newM) { 
-      state.kernel.particleModified(this._id, {_m:newM})
-    }});
+    Object.defineProperty(Node.prototype, "tempMass", {
+      set: function(newM) {
+        state.kernel.particleModified(this._id, {_m:newM})
+      }
+    })
     
-    defineProperty(Node.prototype, "fixed",
-    		{get:function() { return this._fixed; },
-	    	 set:function(isFixed) { 
-	    	       this._fixed = isFixed
-	    	       state.kernel.particleModified(this._id, {f:isFixed?1:0})
-	    	     }});
+    Object.defineProperty(Node.prototype, "fixed", {
+      get: function() { return this._fixed; },
+      set: function(isFixed) {
+        this._fixed = isFixed
+        state.kernel.particleModified(this._id, {f:isFixed?1:0})
+      }
+    })
     
     return that
-  };
+  }
+  
