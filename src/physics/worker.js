@@ -37,6 +37,7 @@ $ = {
 // endalias
 var PhysicsWorker = function(){
   var _timeout = 20
+  var _speed = 1
   var _physics = null
   var _physicsInterval = null
   var _lastTick = null
@@ -46,6 +47,7 @@ var PhysicsWorker = function(){
   
   var that = {  
     init:function(param){
+      _speed = param.speed
       that.timeout(param.timeout)
       _physics = Physics(param.dt, param.stiffness, param.repulsion, param.friction, that.tock)
       return that
@@ -74,7 +76,8 @@ var PhysicsWorker = function(){
     },
     tick:function(){
       // iterate the system
-      _physics.tick()    
+      for (var i = 0; i < _speed; ++i)
+          _physics.tick()    
 
 
       // but stop the simulation when energy of the system goes below a threshold

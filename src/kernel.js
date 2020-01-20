@@ -150,7 +150,8 @@
       // the main render loop when running in non-worker mode
       physicsUpdate:function(){
         if (_tween) _tween.tick()
-        _physics.tick()
+        for (var i = 0; i < that.system.parameters().speed; ++i) 
+            _physics.tick()
 
         var stillActive = that.system._updateBounds()
         if (_tween && _tween.busy()) stillActive = true

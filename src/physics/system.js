@@ -4,8 +4,8 @@
 // the main controller object for creating/modifying graphs 
 //
 
-  var ParticleSystem = function(repulsion, stiffness, friction, centerGravity, targetFps, dt, precision, integrator){
-  // also callable with ({integrator:, stiffness:, repulsion:, friction:, timestep:, fps:, dt:, gravity:})
+  var ParticleSystem = function(repulsion, stiffness, friction, centerGravity, speed, targetFps, dt, precision){
+  // also callable with ({stiffness:, repulsion:, friction:, timestep:, speed:, fps:, dt:, gravity:})
     
     var _changes=[]
     var _notification=null
@@ -16,12 +16,15 @@
     var _screenPadding = [20,20,20,20]
     var _bounds = null
     var _boundsTarget = null
+    var _center = null
+    var _camera = "zoom"
 
     if (typeof repulsion=='object'){
       var _p = repulsion
       friction = _p.friction
       repulsion = _p.repulsion
       targetFps = _p.fps
+      speed = _p.speed
       dt = _p.dt
       stiffness = _p.stiffness
       centerGravity = _p.gravity
@@ -34,13 +37,14 @@
     friction = isNaN(friction) ? .5 : friction
     repulsion = isNaN(repulsion) ? 1000 : repulsion
     targetFps = isNaN(targetFps) ? 55 : targetFps
+    speed = isNaN(speed) ? 1 : speed
     stiffness = isNaN(stiffness) ? 600 : stiffness
     dt = isNaN(dt) ? 0.02 : dt
     precision = isNaN(precision) ? .6 : precision
     centerGravity = (centerGravity===true)
 
     var _systemTimeout = (targetFps!==undefined) ? 1000/targetFps : 1000/50
-    var _parameters = {integrator:integrator, repulsion:repulsion, stiffness:stiffness, friction:friction, dt:dt, gravity:centerGravity, precision:precision, timeout:_systemTimeout}
+    var _parameters = {repulsion:repulsion, stiffness:stiffness, friction:friction, dt:dt, gravity:centerGravity, precision:precision, speed:speed, timeout:_systemTimeout}
     var _energy
 
     var state = {
@@ -93,8 +97,8 @@
           //   'fixed' overrides the default of false
           //   'x' & 'y' will set a starting position rather than 
           //             defaulting to random placement
-          var x = (data.x!=undefined) ? data.x : null
-          var y = (data.y!=undefined) ? data.y : null
+          var x = (data.x!=undefined && !isNaN(data.x)) ? data.x : null
+          var y = (data.y!=undefined && !isNaN(data.y)) ? data.y : null
           var fixed = (data.fixed) ? 1 : 0
 
           var node = new Node(data)
@@ -450,31 +454,73 @@
         return arbor.Point(px, py);
       },
 
+      center:function(newCenter) {
+        _center = newCenter
+      },
+      camera:function(newCamera) {
+        _camera = newCamera
+      },
+
+      _setView:function(center,w,h,bbox){
+        var p = null
+        if (!bbox) bbox = that.bounds()
+        if (!center) {
+            var bottomright = new Point(bbox.bottomright.x, bbox.bottomright.y)
+            var topleft = new Point(bbox.topleft.x, bbox.topleft.y)
+            var dims = bottomright.subtract(topleft)
+            w = dims.x
+            h = dims.y
+            p = topleft.add(dims.divide(2))
+        }
+        else if (typeof(center)=='object') {
+            // if center is a Point
+            if (center.x != undefined && center.y != undefined) {
+                p = new Point(center.x, center.y)
+            }
+            // if center is a Node
+            if (typeof(center.p)=='object') {
+                p = new Point(center.p.x, center.p.y)
+            }
+        }
+        // if center is a Node identifier
+        else if (typeof(center)=='string') {
+            n = that.getNode(center)
+            p = new Point(n.p.x, n.p.y)
+        }
+        else {
+            trace('Error! Bad argument to _setView()')
+        }
+
+        var size;
+        if (!w) {
+            if (_bounds && _camera == "pan") w = _bounds.bottomright.x - _bounds.topleft.x
+            else w = 2*Math.max(Math.max(2,p.x-bbox.topleft.x),bbox.bottomright.x-p.x)
+        }
+        if (!h) {
+            if (_bounds && _camera == "pan") h = _bounds.bottomright.y - _bounds.topleft.y
+            else h = 2*Math.max(Math.max(2,p.y-bbox.topleft.y),bbox.bottomright.y-p.y)
+        }
+        if (_camera == "zoom") {
+            var x = Math.max(w,h)
+            size = new Point(x,x)
+        }
+        else { // Pan or fit
+            size = new Point(w,h)
+        }
+
+        _boundsTarget = {topleft:p.subtract(size.divide(2)),bottomright:p.add(size.divide(2))}
+      },
+
       _updateBounds:function(newBounds){
-        // step the renderer's current bounding box closer to the true box containing all
-        // the nodes. if _screenStep is set to 1 there will be no lag. if _screenStep is
+        // step the renderer's current bounding box closer to the desired view
+        // if _screenStep is set to 1 there will be no lag. if _screenStep is
         // set to 0 the bounding box will remain stationary after being initially set 
         if (_screenSize===null) return
         
-        if (newBounds) _boundsTarget = newBounds
-        else _boundsTarget = that.bounds()
-        
-        // _boundsTarget = newBounds || that.bounds()
-        // _boundsTarget.topleft = new Point(_boundsTarget.topleft.x,_boundsTarget.topleft.y)
-        // _boundsTarget.bottomright = new Point(_boundsTarget.bottomright.x,_boundsTarget.bottomright.y)
-
-        var bottomright = new Point(_boundsTarget.bottomright.x, _boundsTarget.bottomright.y)
-        var topleft = new Point(_boundsTarget.topleft.x, _boundsTarget.topleft.y)
-        var dims = bottomright.subtract(topleft)
-        var center = topleft.add(dims.divide(2))
-
-
-        var MINSIZE = 4                                   // perfect-fit scaling
-        // MINSIZE = Math.max(Math.max(MINSIZE,dims.y), dims.x) // proportional scaling
-
-        var size = new Point(Math.max(dims.x,MINSIZE), Math.max(dims.y,MINSIZE))
-        _boundsTarget.topleft = center.subtract(size.divide(2))
-        _boundsTarget.bottomright = center.add(size.divide(2))
+        if (newBounds) {
+            that._setView(_center,0,0,newBounds)
+        }
+        else that._setView(_center)
 
         if (!_bounds){
           if ($.isEmptyObject(state.nodes)) return false
