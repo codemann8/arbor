@@ -68,6 +68,10 @@
       case "boolean":
       return old === true
       break
+      
+      case "function":
+      return old
+      break
     }
 
     var newObj = ($.isArray(old)) ? [] : {}

@@ -5,10 +5,15 @@
 //
     
   var Kernel = function(pSystem){
-    // in chrome, web workers aren't available to pages with file:// urls
+    // web workers fail when started from pages loaded from disk
+    // See: https://groups.google.com/a/chromium.org/group/chromium-html5/browse_thread/thread/b71c654e8df2e20b
+    //      http://code.google.com/p/chromium/issues/detail?id=40787
     var chrome_local_file = window.location.protocol == "file:" &&
-                            navigator.userAgent.toLowerCase().indexOf('chrome') > -1;
-    var USE_WORKER = (window.Worker !== undefined && !chrome_local_file)    
+      navigator.userAgent.toLowerCase().indexOf('chrome') > -1;
+    if (chrome_local_file) trace('disabling web workers: running in chrome from local file');
+
+    var USE_WORKER = (window.Worker !== undefined && !chrome_local_file)
+    // var USE_WORKER = false
     
     var _physics = null
     var _tween = null
@@ -20,6 +25,7 @@
     var _tickInterval = null
     var _lastTick = null
     var _paused = false
+    var _running = false
     
     var that = {
       system:pSystem,
@@ -85,7 +91,6 @@
             _tickInterval=null
           }
         }
-
         // a change to the physics parameters 
         if (USE_WORKER) _physics.postMessage({type:'sys',param:param})
         else _physics.modifyPhysics(param)
@@ -93,11 +98,21 @@
       },
       
       workerMsg:function(e){
-        var type = e.data.type
-        if (type=='geometry'){
-          that.workerUpdate(e.data)
-        }else{
-          trace('physics:',e.data)
+        switch (e.data.type) {
+          case 'geometry':
+            that.workerUpdate(e.data)
+            // function doesn't get through .postMessage, so we need to check terminationFn
+            // when in worker mode here
+            if (pSystem.parameters().terminationFn()) {
+              trace("stopping worker")
+              _physics.postMessage({type:"stop"})
+            }
+            break
+          case 'stopping':
+            _running = false
+            break
+          default:
+            trace('physics:',e.data)
         }
       },
       _lastPositions:null,
@@ -172,20 +187,10 @@
         _fpsWindow.push(_fpsWindow.last-prevFrame)
         if (_fpsWindow.length>50) _fpsWindow.shift()
 
-        // but stop the simulation when energy of the system goes below a threshold
-        var sysEnergy = _physics.systemEnergy()
-        if ((sysEnergy.mean + sysEnergy.max)/2 < 0.05){
-          if (_lastTick===null) _lastTick=new Date().valueOf()
-          if (new Date().valueOf()-_lastTick>1000){
-            // trace('stopping')
-            clearInterval(_tickInterval)
-            _tickInterval = null
-          }else{
-            // trace('pausing')
-          }
-        }else{
-          // trace('continuing')
-          _lastTick = null
+        if (pSystem.parameters().terminationFn()) {
+          clearInterval(_tickInterval)
+          _tickInterval = null
+          _running = false;
         }
       },
 
@@ -218,6 +223,8 @@
           _tickInterval = setInterval(that.physicsUpdate, 
                                       that.system.parameters().timeout)
         }
+        
+        _running = true
       },
       stop:function(){
         _paused = true
@@ -229,7 +236,11 @@
             _tickInterval = null
           }
         }
-      
+        
+        _running = false;
+      },
+      isRunning:function() {
+        return _running;
       }
     }
     

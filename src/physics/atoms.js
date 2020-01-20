@@ -90,6 +90,9 @@ Point.prototype = {
   },
   normalize:function(){
   	return this.divide(this.magnitude());
+  },
+  equals:function(op){
+	return this.y == op.y && this.x == op.x;
   }
 }
 

@@ -40,10 +40,9 @@ var PhysicsWorker = function(){
   var _speed = 1
   var _physics = null
   var _physicsInterval = null
-  var _lastTick = null
   
   var times = []
-  var last = new Date().valueOf()
+
   
   var that = {  
     init:function(param){
@@ -65,34 +64,18 @@ var PhysicsWorker = function(){
       if (_physicsInterval!==null) return
 
       // postMessage('starting')
-      _lastTick=null
       _physicsInterval = setInterval(that.tick, _timeout)
     },
     stop:function(){
       if (_physicsInterval===null) return
       clearInterval(_physicsInterval);
       _physicsInterval = null;
-      // postMessage('stopping')
+      postMessage({type:'stopping'})
     },
     tick:function(){
       // iterate the system
       for (var i = 0; i < _speed; ++i)
-          _physics.tick()    
-
-
-      // but stop the simulation when energy of the system goes below a threshold
-      var sysEnergy = _physics.systemEnergy()
-      if ((sysEnergy.mean + sysEnergy.max)/2 < 0.05){
-        if (_lastTick===null) _lastTick=new Date().valueOf()
-        if (new Date().valueOf()-_lastTick>1000){
-          that.stop()
-        }else{
-          // postMessage('pausing')
-        }
-      }else{
-        _lastTick = null
-      }
-      
+        _physics.tick()
     },
 
     tock:function(sysData){
