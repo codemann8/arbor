@@ -4,8 +4,8 @@
 // the main controller object for creating/modifying graphs 
 //
 
-  var ParticleSystem = function(repulsion, stiffness, friction, centerGravity, speed, targetFps, dt, precision){
-  // also callable with ({stiffness:, repulsion:, friction:, timestep:, speed:, fps:, dt:, gravity:})
+  var ParticleSystem = function(repulsion, stiffness, friction, centerGravity, speed, targetFps, dt, precision, integrator, workerUrl){
+  // also callable with ({stiffness:, repulsion:, friction:, timestep:, speed:, fps:, dt:, gravity:, integrator:, workerUrl:})
     
     var _changes=[]
     var _notification=null
@@ -30,6 +30,7 @@
       centerGravity = _p.gravity
       precision = _p.precision
       integrator = _p.integrator
+      workerUrl =_p.workerUrl
     }
 
     // param validation and defaults
@@ -56,7 +57,9 @@
         }
       }
 
-    var _parameters = {repulsion:repulsion,
+    var _parameters = {workerUrl:workerUrl,
+                       integrator:integrator, 
+                       repulsion:repulsion,
                        stiffness:stiffness,
                        friction:friction,
                        dt:dt,
@@ -129,6 +132,62 @@
           node.name = name
           state.names[name] = node
           state.nodes[node._id] = node;
+
+          // moz/safari/chrome support __define[SG]etter__, IE9 doesn't
+          // safari/chrome/IE9 support Object.defineProperty, moz < 4 doesn't
+          // shim here so that everyone is happy
+          // Note that our fake defineProperty impl only supports `get` and
+          // `set` slots in the property descriptor, not `enumerable` et al.
+          var defineProperty = Object.defineProperty || function (obj, propName, descriptor) {
+            descriptor.get && obj.__defineGetter__(propName, descriptor.get);
+            descriptor.set && obj.__defineSetter__(propName, descriptor.set);
+          };
+          
+          // some magic attrs to make the Node objects phone-home their physics-relevant changes
+          Object.defineProperty(Node.prototype, "p", {
+            get: function() {
+              var self = this
+              var roboPoint = Object.create(Point.prototype)
+              
+              Object.defineProperty(roboPoint, 'x', {
+                get: function() { return self._p.x; },
+                set: function(newX) { state.kernel.particleModified(self._id, {x:newX}) }
+              })
+              Object.defineProperty(roboPoint, 'y', {
+                get: function () { return self._p.y; },
+                set: function(newY) { state.kernel.particleModified(self._id, {y:newY}) }
+              })
+              
+              return roboPoint
+            },
+            set: function(newP) {
+              this._p.x = newP.x
+              this._p.y = newP.y
+              state.kernel.particleModified(this._id, {x:newP.x, y:newP.y})
+            }
+          })
+          
+          Object.defineProperty(Node.prototype, "mass", {
+            get: function() { return this._mass; },
+            set: function(newM) {
+              this._mass = newM
+              state.kernel.particleModified(this._id, {m:newM})
+            }
+          })
+          
+          Object.defineProperty(Node.prototype, "tempMass", {
+            set: function(newM) {
+              state.kernel.particleModified(this._id, {_m:newM})
+            }
+          })
+          
+          Object.defineProperty(Node.prototype, "fixed", {
+            get: function() { return this._fixed; },
+            set: function(isFixed) {
+              this._fixed = isFixed
+              state.kernel.particleModified(this._id, {f:isFixed?1:0})
+            }
+          })
 
           _changes.push({t:"addNode", id:node._id, m:node.mass, p:node.p, f:fixed})
           that._notify();
@@ -652,62 +711,6 @@
     
     state.kernel = Kernel(that)
     state.tween = state.kernel.tween || null
-    
-    // moz/safari/chrome support __define[SG]etter__, IE9 doesn't
-    // safari/chrome/IE9 support Object.defineProperty, moz < 4 doesn't
-    // shim here so that everyone is happy
-    // Note that our fake defineProperty impl only supports `get` and
-    // `set` slots in the property descriptor, not `enumerable` et al.
-    var defineProperty = Object.defineProperty || function (obj, propName, descriptor) {
-    	descriptor.get && obj.__defineGetter__(propName, descriptor.get);
-    	descriptor.set && obj.__defineSetter__(propName, descriptor.set);
-    };
-    
-    // some magic attrs to make the Node objects phone-home their physics-relevant changes
-    Object.defineProperty(Node.prototype, "p", {
-      get: function() {
-        var self = this
-        var roboPoint = Object.create(Point.prototype)
-        
-        Object.defineProperty(roboPoint, 'x', {
-          get: function() { return self._p.x; },
-          set: function(newX) { state.kernel.particleModified(self._id, {x:newX}) }
-        })
-        Object.defineProperty(roboPoint, 'y', {
-          get: function () { return self._p.y; },
-          set: function(newY) { state.kernel.particleModified(self._id, {y:newY}) }
-        })
-        
-        return roboPoint
-      },
-      set: function(newP) {
-        this._p.x = newP.x
-        this._p.y = newP.y
-        state.kernel.particleModified(this._id, {x:newP.x, y:newP.y})
-      }
-    })
-    
-    Object.defineProperty(Node.prototype, "mass", {
-      get: function() { return this._mass; },
-      set: function(newM) {
-        this._mass = newM
-        state.kernel.particleModified(this._id, {m:newM})
-      }
-    })
-    
-    Object.defineProperty(Node.prototype, "tempMass", {
-      set: function(newM) {
-        state.kernel.particleModified(this._id, {_m:newM})
-      }
-    })
-    
-    Object.defineProperty(Node.prototype, "fixed", {
-      get: function() { return this._fixed; },
-      set: function(isFixed) {
-        this._fixed = isFixed
-        state.kernel.particleModified(this._id, {f:isFixed?1:0})
-      }
-    })
     
     return that
   }

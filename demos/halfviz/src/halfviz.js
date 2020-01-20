@@ -4,6 +4,7 @@
 // instantiates all the helper classes, sets up the particle system + renderer
 // and maintains the canvas/editor splitview
 //
+
 (function(){
   
   trace = arbor.etc.trace
@@ -29,24 +30,32 @@
     var _failures = null
     
     var that = {
+      canvas:_canvas,
+      window:window,
+      network:null,
       dashboard:Dashboard("#dashboard", sys),
       io:IO("#editor .io"),
+    	defaultNodeFont:"10px Arial",
       init:function(){
         
         $(window).resize(that.resize)
         that.resize()
         that.updateLayout(Math.max(1, $(window).width()-340))
 
-        _code.keydown(that.typing)
-        _grabber.bind('mousedown', that.grabbed)
+        if (_code.length > 0) {
+          _code.keydown(that.typing)
+          _grabber.bind('mousedown', that.grabbed)
 
-        $(that.io).bind('get', that.getDoc)
-        $(that.io).bind('clear', that.newDoc)
+          $(that.io).bind('get', that.getDoc)
+          $(that.io).bind('clear', that.newDoc)
+        }
+        that.dashboard.setHalfViz(that)
+        sys.renderer.setHalfViz(that)
         return that
       },
       
       getDoc:function(e){
-        $.getJSON('library/'+e.id+'.json', function(doc){
+        $.getJSON(arbor.etc.arbor_path()+'../demos/halfviz/library/'+e.id+'.json', function(doc){
 
           // update the system parameters
           if (doc.sys){
@@ -64,7 +73,21 @@
       },
 
       newDoc:function(){
-        var lorem = "; some example nodes\nhello {color:red, label:HELLO}\nworld {color:orange}\n\n; some edges\nhello -> world {color:yellow}\nfoo -> bar {weight:5}\nbar -> baz {weight:2}"
+        var lorem = "; example global style\n" +
+        		"{shadow:true,fontcolor:blue}\n" +
+        		"->{weight:2,fontcolor:green}\n\n" +
+        		//"{shadow:true, edge-font:8px Times New Roman}\n\n" +
+        		"; some example nodes\n" +
+        		"hello {color:red, label:HELLO}\n" +
+        		"world {color:orange,html:test}\n" +
+        		"lonely {html:<span style='font-weight:bold;font-family:Times'>Goodbye, <p>cruel world</p></span>}\n\n" +
+        		"; some edges\n" +
+        		"{shadow:false}\n" +
+        		"hello -- world {color:#223344}\n" +
+        		"foo -> bar {weight:5, font:italic 20px Arial}\n" +
+        		"bar -> baz {weight:2,label:agIye,font:14px Times,labelbackground:pink,fontcolor:red}\n" +
+        		"bar -> hello {label:to say}\n" +
+        		"hello -> bar";
         
         _code.val(lorem).focus()
         $.address.value("")
@@ -73,14 +96,55 @@
         _editing = false
       },
 
+      redraw:function(){
+        sys.renderer.redraw()
+      },
+
+      getParameters:function(){
+        return sys.parameters()
+      },
+
+      setParameters:function(parameters){
+        sys.parameters(parameters)
+        that.dashboard.update()
+        sys.renderer.redraw()
+      },
+
       updateGraph:function(e){
-        var src_txt = _code.val()
-        var network = parse(src_txt)
+        if (_code.length > 0) {
+          var src_txt = _code.val()
+          that.setNetwork(parse(src_txt))
+        } else {
+        	that.setNetwork(that.network)
+        }
+      },
+      
+      setNetwork:function(network) {
+        if (network == null) {
+        	network = {nodes:[],edges:[]}
+        }
+        that.network = network
+        var fixed = false;
+        if (Object.keys(network.nodes).length < 2) {
+        /* Resolve a bug when there is only one node,
+           otherwise it bounces around the screen like crazy */
+          fixed = true;
+        }
+        sys.renderer.fixed = fixed;
         $.each(network.nodes, function(nname, ndata){
           if (ndata.label===undefined) ndata.label = nname
+          ndata.fixed = fixed;
         })
+        if (network.parameters) {
+        	sys.parameters(network.parameters)
+          that.dashboard.update()
+        }
         sys.merge(network)
         _updateTimeout = null
+      },
+      
+      pick:function(x,y){
+        return sys.renderer.pick(x,y)
       },
       
       resize:function(){        
@@ -91,25 +155,34 @@
       },
       
       updateLayout:function(split){
-        var w = dom.width()
-        var h = _grabber.height()
-        var split = split || _grabber.offset().left
-        var splitW = _grabber.width()
-        _grabber.css('left',split)
-
-        var edW = w - split
-        var edH = h
-        _ed.css({width:edW, height:edH})
-        if (split > w-20) _ed.hide()
-        else _ed.show()
-
-        var canvW = split - splitW
-        var canvH = h
+        var canvW = 0
+        var canvH = 0
+        if (_grabber.length > 0) {
+          var w = dom.width()
+          var h = _grabber.height()
+          var split = split || _grabber.offset().left
+          var splitW = _grabber.width()
+          _grabber.css('left',split)
+  
+          var edW = w - split
+          var edH = h
+          _ed.css({width:edW, height:edH})
+          if (split > w-20) _ed.hide()
+          else _ed.show()
+  
+          canvW = split - splitW
+          canvH = h
+        } else {
+          canvW = dom.width()
+          canvH = dom.height()
+        }
         _canvas.width = canvW
         _canvas.height = canvH
         sys.screenSize(canvW, canvH)
                 
-        _code.css({height:h-20,  width:edW-4, marginLeft:2})
+        if (_code.length > 0) {
+          _code.css({height:h-20,  width:edW-4, marginLeft:2})
+        }
       },
       
       grabbed:function(e){
@@ -148,7 +221,12 @@
 
 
   $(document).ready(function(){
-    var mcp = HalfViz("#halfviz")    
+    var mcp = HalfViz("#halfviz");
+      /* this helps GWT apps embedded in iframes find the halfviz object */
+    document.halfviz = mcp; 
+    if (document.onHalfVizLoaded) {
+    	document.onHalfVizLoaded(mcp)
+    }
   })
 
   

@@ -32,6 +32,7 @@
     var _state = null
     
     var that = {
+      halfViz:null, // will be set soon
       helpPanel:HelpPanel($('#rtfm')),
       init:function(){
         // initialize the display with params from the particle system
@@ -41,6 +42,7 @@
         dom.find('.frob').mousedown(that.beginFrobbing)
         dom.find('img').mousedown(function(){  return false })
         dom.find('.toggle').click(that.toggleGravity)
+        dom.find('.cleargraphbutton').click(that.clearGraph)
 
         $('.help').click(that.showHelp)
         dom.find('.about').click(that.showIntro)
@@ -100,6 +102,14 @@
         var oldGravity = sys.parameters().gravity
         sys.parameters({gravity:!oldGravity})
         that.update()
+      },
+      
+      setHalfViz:function(halfViz){
+        that.halfViz = halfViz
+      },
+      
+      clearGraph:function(e){
+        that.halfViz.setNetwork(null)
       },
       
       beginFrobbing:function(e){
